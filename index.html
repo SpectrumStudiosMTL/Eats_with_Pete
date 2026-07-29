@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Eats with Pete — Walk the street</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="js/early-init.js"></script>
+</head>
+<body>
+
+<h2 style="position:absolute;left:-9999px;">Eats with Pete: scroll down to walk Pete along the street, past the logo signpost and through storefronts linking to episodes, then loop back to the start</h2>
+
+<div class="scroll-space" id="scrollSpace">
+  <div class="viewport">
+    <div class="track" id="track">
+
+      <div class="margin" id="leadMargin">
+        <div class="logo-prop"><h1 class="pixel">Eats<br>with<br>Pete</h1></div>
+      </div>
+
+      <div class="scene" id="scene">
+        <img class="bg" id="bgImg" src="assets/images/bg_scene.jpg" alt="the street">
+
+        <!-- ===================================================================
+             STOREFRONT CONFIG — positions eyeballed from the actual art
+             (percentages of the full background width). Adjust freely.
+        ==================================================================== -->
+        <a class="storefront" style="left:7.32%;"    href="#" data-label="Supermarché">EPISODES</a>
+        <a class="storefront" style="left:15.84%;"   href="#" data-label="Schwartz's">CARROT<br>CAKE</a>
+        <a class="storefront" style="left:40.85%;" href="#" data-label="Pied de Cochon">RECIPES</a>
+        <a class="storefront" style="left:47.23%;" href="#" data-label="Dépanneur">SKITS</a>
+        <a class="storefront" style="left:56.28%;"   href="#" data-label="La Belle Province">SHOP</a>
+        <a class="storefront" style="left:68.52%;" href="#" data-label="Rotisserie Romados">SOCIALS</a>
+        <a class="storefront" style="left:76.50%;"   href="#" data-label="Fairmount Bagel">ABOUT</a>
+
+        <div class="carrot-prop" id="carrotProp">
+          <img id="carrotImg" src="" alt="Carrot peddler">
+        </div>
+
+
+<audio id="hotdogSound" src="assets/audio/hotdog_sound.mp3" preload="auto"></audio>
+<!-- Placeholder for the carrot peddler's click sound bite — drop the base64 src in here once it's ready -->
+<!-- Carrot peddler click-sound cycle: gotthestuff -> lazerwave -> gotthestuff -> ... -->
+<audio id="carrotSound1" src="assets/audio/carrot_sound_1.mp3" preload="auto"></audio>
+<audio id="carrotSound2" src="assets/audio/carrot_sound_2.mp3" preload="auto"></audio>
+<!-- Looping background ambience track -->
+<audio id="heyManSound" src="assets/audio/hey_man_sound.mp3" preload="auto"></audio>
+
+<audio id="ambienceSound" src="assets/audio/ambience_sound.mp3" loop preload="auto"></audio>
+
+      </div>
+
+      <div class="margin" id="trailMargin">
+        <div class="logo-prop"><h1 class="pixel">Eats<br>with<br>Pete</h1></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="pete" id="pete">
+  <img id="peteImg" src="" alt="Pete walking">
+</div>
+
+<div class="cart-prop">
+  <img src="assets/images/cart_prop.png" alt="hot dog cart">
+</div>
+
+<div class="grain-overlay"></div>
+
+<button id="muteBtn" class="pixel" aria-label="Mute sound" title="Mute sound">🔊</button>
+
+<div class="hint" id="hint">scroll to walk →</div>
+
+<footer class="pixel">THAT'S THE END OF THE STREET. KEEP SCROLLING TO LOOP BACK.</footer>
+
+<script src="js/main.js"></script>
+
+</body>
+</html>
