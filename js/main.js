@@ -268,7 +268,15 @@ const proximitySoundTargets = [
 ];
 
 function checkProximitySounds(){
-  if(peteState !== 'walking') return;
+  // NOT gated on peteState === 'walking' — checkPointTriggers() switches
+  // peteState to 'point-bg'/'point-fg' for ~1.1s whenever Pete passes a
+  // storefront, and during that window Pete's position keeps advancing
+  // with scroll. If this check were skipped while a gesture was playing,
+  // fast scrolling could carry Pete straight through the cart/carrot's
+  // trigger zone with the sound never firing. Proximity sound playback
+  // only cares about Pete's screen position, so it must run every frame
+  // regardless of what animation is currently on his sprite.
+  if(peteState === 'idle') return;
   const centerX = window.innerWidth / 2;
   for(const t of proximitySoundTargets){
     const r = t.el.getBoundingClientRect();
@@ -305,7 +313,7 @@ function stepCarrotLoop(now){
 // and everything derived from it (progress, proximity/point triggers,
 // the end-of-scroll wrap check) — can then never advance faster than
 // that per-frame cap, no matter how hard the user scrolls.
-const MAX_SCROLL_PX_PER_FRAME = 16; // lower = slower max walk speed
+const MAX_SCROLL_PX_PER_FRAME = 9; // lower = slower max walk speed
 const SCROLL_QUEUE_CAP = MAX_SCROLL_PX_PER_FRAME * 6; // backlog limit, so input release stops things quickly
 let scrollQueuePx = 0;
 
