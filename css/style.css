@@ -202,7 +202,7 @@ body{ font-family:'Baloo 2', sans-serif; color:var(--ink); background:#fff; }
   /* just left of the Pied de Cochon storefront, per the position/scale guide —
      nudge this % to taste once checked against the live art */
   left:35%;
-  height:34.2%; /* was 36% — reduced 5% per feedback */
+  height:100%; /* reset — old tuned value (34.2%/41.04%) was calibrated to the previous art, now replaced */
   z-index:9;           /* Pete (z-index:10) walks in front when they overlap */
   pointer-events:auto;
   cursor:pointer;
