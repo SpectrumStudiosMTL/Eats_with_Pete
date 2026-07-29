@@ -38,8 +38,8 @@ reloading the whole blob. This version keeps the same page/behavior but:
   one of the same name (same filename = no code changes needed).
 - **Add/remove animation frames**: edit the `WALK_FRAMES`, `HANDSUP_FRAMES`,
   `DISCO_FRAMES`, `JAZZHANDS_FRAMES`, `POINT_BG_FRAMES`, `POINT_FG_FRAMES`,
-  or `CARROT_FRAMES` arrays near the top of `js/main.js` — each is just a
-  list of paths into `assets/images/`.
+  `CARROT_FRAMES`, or `BANANA_STAND_FRAMES` arrays near the top of
+  `js/main.js` — each is just a list of paths into `assets/images/`.
 - **Tweak layout/colors**: everything is in `css/style.css`.
 - **Tweak walk speed, scroll behavior, Pete's positioning, etc.**: all in
   `js/main.js`.

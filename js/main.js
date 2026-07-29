@@ -9,7 +9,8 @@ const YEAH_FRAMES = ["assets/images/yeah_01.png", "assets/images/yeah_02.png", "
 const DISCO_FRAMES = ["assets/images/disco_01.png", "assets/images/disco_02.png", "assets/images/disco_03.png", "assets/images/disco_04.png", "assets/images/disco_05.png", "assets/images/disco_06.png", "assets/images/disco_07.png", "assets/images/disco_08.png", "assets/images/disco_09.png", "assets/images/disco_10.png", "assets/images/disco_11.png", "assets/images/disco_12.png", "assets/images/disco_13.png", "assets/images/disco_14.png", "assets/images/disco_15.png", "assets/images/disco_16.png", "assets/images/disco_17.png", "assets/images/disco_18.png", "assets/images/disco_19.png", "assets/images/disco_20.png"];
 const JAZZHANDS_FRAMES = ["assets/images/jazzhands_01.png", "assets/images/jazzhands_02.png", "assets/images/jazzhands_03.png", "assets/images/jazzhands_04.png", "assets/images/jazzhands_05.png", "assets/images/jazzhands_06.png", "assets/images/jazzhands_07.png", "assets/images/jazzhands_08.png", "assets/images/jazzhands_09.png", "assets/images/jazzhands_10.png", "assets/images/jazzhands_11.png", "assets/images/jazzhands_12.png", "assets/images/jazzhands_13.png", "assets/images/jazzhands_14.png", "assets/images/jazzhands_15.png", "assets/images/jazzhands_16.png", "assets/images/jazzhands_17.png", "assets/images/jazzhands_18.png"];
 const CARROT_FRAMES = ["assets/images/carrot_01.png", "assets/images/carrot_02.png", "assets/images/carrot_03.png", "assets/images/carrot_04.png", "assets/images/carrot_05.png", "assets/images/carrot_06.png", "assets/images/carrot_07.png", "assets/images/carrot_08.png", "assets/images/carrot_09.png", "assets/images/carrot_10.png", "assets/images/carrot_11.png", "assets/images/carrot_12.png", "assets/images/carrot_13.png", "assets/images/carrot_14.png", "assets/images/carrot_15.png", "assets/images/carrot_16.png", "assets/images/carrot_17.png", "assets/images/carrot_18.png", "assets/images/carrot_19.png", "assets/images/carrot_20.png", "assets/images/carrot_21.png"];
-const HANDSUP_FRAMES = ["assets/images/handsup_01.png", "assets/images/handsup_02.png", "assets/images/handsup_03.png", "assets/images/handsup_04.png", "assets/images/handsup_05.png", "assets/images/handsup_06.png", "assets/images/handsup_07.png", "assets/images/handsup_08.png", "assets/images/handsup_09.png", "assets/images/handsup_10.png", "assets/images/handsup_11.png", "assets/images/handsup_12.png", "assets/images/handsup_13.png", "assets/images/handsup_14.png", "assets/images/handsup_15.png", "assets/images/handsup_16.png", "assets/images/handsup_17.png", "assets/images/handsup_18.png", "assets/images/handsup_19.png", "assets/images/handsup_20.png", "assets/images/handsup_21.png", "assets/images/handsup_22.png", "assets/images/handsup_23.png", "assets/images/handsup_24.png", "assets/images/handsup_25.png", "assets/images/handsup_26.png", "assets/images/handsup_27.png", "assets/images/handsup_28.png", "assets/images/handsup_29.png", "assets/images/handsup_30.png", "assets/images/handsup_31.png", "assets/images/handsup_32.png", "assets/images/handsup_33.png", "assets/images/handsup_34.png", "assets/images/handsup_35.png", "assets/images/handsup_36.png", "assets/images/handsup_37.png", "assets/images/handsup_38.png", "assets/images/handsup_39.png", "assets/images/handsup_40.png", "assets/images/handsup_41.png", "assets/images/handsup_42.png", "assets/images/handsup_43.png", "assets/images/handsup_44.png", "assets/images/handsup_45.png", "assets/images/handsup_46.png", "assets/images/handsup_47.png", "assets/images/handsup_48.png", "assets/images/handsup_49.png", "assets/images/handsup_50.png", "assets/images/handsup_51.png", "assets/images/handsup_52.png", "assets/images/handsup_53.png"];
+const BANANA_STAND_FRAMES = Array.from({length:38}, (_, i) => `assets/images/banana_stand_${String(i+1).padStart(2,'0')}.png`);
+const HANDSUP_FRAMES = Array.from({length:47}, (_, i) => `assets/images/handsup_${String(i+1).padStart(2,'0')}.png`);
 
 
 
@@ -28,6 +29,7 @@ const carrotSound2 = document.getElementById('carrotSound2');
 const ambienceSound = document.getElementById('ambienceSound');
 const muteBtn = document.getElementById('muteBtn');
 const carrotImg = document.getElementById('carrotImg');
+const bananaStandImg = document.getElementById('bananaStandImg');
 
 // Fix #1 (belt-and-suspenders): force the logo starting point on every
 // fresh load or restore, in case scrollRestoration alone isn't enough on
@@ -213,23 +215,32 @@ carrotProp.addEventListener('click', (e) => {
   snd.play().catch(() => {});
 });
 
+// --- click the banana stand: play its sound --------------------------
+const bananaStandSound = document.getElementById('bananaStandSound');
+bananaStandImg.addEventListener('click', (e) => {
+  e.stopPropagation();
+  bananaStandSound.currentTime = 0;
+  bananaStandSound.play().catch(() => {});
+});
+
 // --- proximity-triggered pointing gestures --------------------------
-// storefronts: Pete points at the BACKGROUND (the shop itself) as he passes
-// the cart / carrot peddler: Pete points at the FOREGROUND (the prop right in front of him)
+// storefronts, the carrot peddler, and the banana stand all sit back in the
+// scene, so Pete points at the BACKGROUND for them; the cart is the one
+// prop actually in front of him, so it gets the FOREGROUND point instead.
 const POINT_TRIGGER_PX = 140;   // how close to screen-centre before it fires
 const POINT_RESET_PX   = 500;   // how far away before it can fire again
 const POINT_BG_FRAME_MS = 110;
 const POINT_FG_FRAME_MS = 110;
 const POINT_DURATION_MS = 1100;
 
-const storefronts = Array.from(document.querySelectorAll('.storefront')).map(el => ({el, triggered:false}));
-const fgGestureTargets = [cartProp, carrotProp].map(el => ({el, triggered:false}));
+const bgGestureTargets = [...document.querySelectorAll('.storefront'), carrotProp, bananaStandImg].map(el => ({el, triggered:false}));
+const fgGestureTargets = [cartProp].map(el => ({el, triggered:false}));
 
 function checkPointTriggers(){
   if(peteState !== 'walking' || animFrames) return;
   const centerX = window.innerWidth / 2;
 
-  for(const s of storefronts){
+  for(const s of bgGestureTargets){
     const r = s.el.getBoundingClientRect();
     const dist = Math.abs((r.left + r.width/2) - centerX);
     if(dist < POINT_TRIGGER_PX && !s.triggered){
@@ -263,8 +274,9 @@ const heyManSound = document.getElementById('heyManSound');
 const PROXIMITY_SOUND_TRIGGER_PX = 260; // a bit wider than the point-gesture trigger, so it cues in a little earlier
 const PROXIMITY_SOUND_RESET_PX = 650;
 const proximitySoundTargets = [
-  { el: cartProp,   sound: hotdogSound, triggered:false, pending:false },
-  { el: carrotProp, sound: heyManSound, triggered:false, pending:false },
+  { el: cartProp,       sound: hotdogSound,      triggered:false, pending:false },
+  { el: carrotProp,     sound: heyManSound,       triggered:false, pending:false },
+  { el: bananaStandImg, sound: bananaStandSound,  triggered:false, pending:false },
 ];
 
 function checkProximitySounds(){
@@ -312,6 +324,18 @@ function stepCarrotLoop(now){
   }
 }
 
+// --- ambient banana stand loop (purely decorative, independent of scroll) ---
+const BANANA_STAND_FRAME_MS = 90;
+let bananaStandFrameIndex = 0;
+let bananaStandLastStep = 0;
+function stepBananaStandLoop(now){
+  if(now - bananaStandLastStep > BANANA_STAND_FRAME_MS){
+    bananaStandLastStep = now;
+    bananaStandFrameIndex = (bananaStandFrameIndex + 1) % BANANA_STAND_FRAMES.length;
+    bananaStandImg.src = BANANA_STAND_FRAMES[bananaStandFrameIndex];
+  }
+}
+
 // --- Fix #2: cap real scroll speed --------------------------------------
 // Fast wheel spins / trackpad flicks could jump window.scrollY by hundreds
 // or thousands of px between 'scroll' events, so props could be passed
@@ -323,7 +347,7 @@ function stepCarrotLoop(now){
 // and everything derived from it (progress, proximity/point triggers,
 // the end-of-scroll wrap check) — can then never advance faster than
 // that per-frame cap, no matter how hard the user scrolls.
-const MAX_SCROLL_PX_PER_FRAME = 9; // lower = slower max walk speed
+const MAX_SCROLL_PX_PER_FRAME = 5; // lower = slower max walk speed (was 9 -> 6 -> 5, per feedback)
 const SCROLL_QUEUE_CAP = MAX_SCROLL_PX_PER_FRAME * 6; // backlog limit, so input release stops things quickly
 let scrollQueuePx = 0;
 
@@ -352,7 +376,7 @@ window.addEventListener('touchmove', (e) => {
 }, { passive:false });
 
 const SCROLL_KEY_PX = {
-  ' ': 120, 'ArrowDown': 40, 'ArrowUp': -40,
+  ' ': 120, 'ArrowRight': 40, 'ArrowLeft': -40,
   'PageDown': 400, 'PageUp': -400,
 };
 window.addEventListener('keydown', (e) => {
@@ -383,6 +407,7 @@ const EASE = 0.09;
 const OFFSET_EASE = 0.12;
 const FRAME_DISTANCE = 11;
 let idleFrameIndex = 0;
+let idleFrameDir = 1;
 let idleLastStep = 0;
 
 function renderLoop(){
@@ -411,11 +436,22 @@ function renderLoop(){
       peteImg.src = animFrames[i];
     }
   } else if(peteState === 'idle'){
-    // ambient HandsUp loop, independent of scroll, until the user scrolls
+    // ambient HandsUp loop, independent of scroll, until the user scrolls.
+    // HANDSUP_FRAMES is a one-directional crouch->big-jump animation, not
+    // a seamless tile (frame 1 and the last frame are very different
+    // poses) — wrapping straight back to frame 0 caused a visible pop
+    // once per cycle, so ping-pong back and forth instead.
     const now = performance.now();
     if(now - idleLastStep > IDLE_FRAME_MS){
       idleLastStep = now;
-      idleFrameIndex = (idleFrameIndex + 1) % HANDSUP_FRAMES.length;
+      idleFrameIndex += idleFrameDir;
+      if(idleFrameIndex >= HANDSUP_FRAMES.length - 1){
+        idleFrameIndex = HANDSUP_FRAMES.length - 1;
+        idleFrameDir = -1;
+      } else if(idleFrameIndex <= 0){
+        idleFrameIndex = 0;
+        idleFrameDir = 1;
+      }
       peteImg.src = HANDSUP_FRAMES[idleFrameIndex];
     }
   } else {
@@ -431,12 +467,14 @@ function renderLoop(){
   checkPointTriggers();
   checkProximitySounds();
   stepCarrotLoop(performance.now());
+  stepBananaStandLoop(performance.now());
 
   requestAnimationFrame(renderLoop);
 }
 
 peteImg.src = HANDSUP_FRAMES[0];
 carrotImg.src = CARROT_FRAMES[0];
+bananaStandImg.src = BANANA_STAND_FRAMES[0];
 layout();
 requestAnimationFrame(renderLoop);
 
@@ -473,7 +511,7 @@ ambienceSound.play().catch(() => {});
 // practical set of real gesture types and, on the first one, play()+pause()
 // every <audio> element so all of them are unlocked together — regardless
 // of which specific interaction ends up being the one that qualifies.
-const allSounds = [hotdogSound, carrotSound1, carrotSound2, heyManSound, ambienceSound];
+const allSounds = [hotdogSound, carrotSound1, carrotSound2, heyManSound, bananaStandSound, ambienceSound];
 const UNLOCK_EVENTS = ['pointerdown', 'mousedown', 'keydown', 'touchstart', 'wheel'];
 let audioUnlocked = false;
 function unlockAudioOnce(){
