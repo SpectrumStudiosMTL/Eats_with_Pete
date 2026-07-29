@@ -129,6 +129,72 @@ body{ font-family:'Baloo 2', sans-serif; color:var(--ink); background:#fff; }
   user-select:none;
 }
 
+.lost-found-icon{
+  position:absolute;
+  /* blank grey wall panel right of Schwartz's, before the Garage sign —
+     nudge these % to taste once checked against the live art, and once
+     replaced with real (non-placeholder) art */
+  left:33.28%;
+  top:23.5%;
+  height:14.19%;
+  aspect-ratio:1/1;
+  width:auto;
+  z-index:2; /* above the bg, below storefronts/props/Pete */
+  pointer-events:auto;
+  cursor:pointer;
+  user-select:none;
+  transition:transform .2s;
+}
+.lost-found-icon:hover{ transform:scale(1.08); }
+
+.video-modal{
+  position:fixed;
+  inset:0;
+  z-index:100;
+  display:none;
+  align-items:center;
+  justify-content:center;
+}
+.video-modal.open{ display:flex; }
+.video-modal-backdrop{
+  position:absolute;
+  inset:0;
+  background:rgba(0,0,0,0.75);
+}
+.video-modal-content{
+  position:relative;
+  z-index:1;
+  width:min(90vw, 960px);
+  max-height:85vh;
+  background:#000;
+  border:6px solid var(--ink);
+  box-shadow:10px 14px 0 rgba(0,0,0,0.3);
+}
+.video-modal-content video{
+  display:block;
+  width:100%;
+  max-height:85vh;
+}
+.video-modal-close{
+  position:absolute;
+  top:-18px;
+  right:-18px;
+  z-index:2;
+  width:40px;
+  height:40px;
+  border-radius:50%;
+  background:var(--cream);
+  border:3px solid var(--ink);
+  box-shadow:2px 3px 0 rgba(0,0,0,0.3);
+  font-size:20px;
+  line-height:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+}
+.video-modal-close:hover{ transform:scale(1.08); }
+
 .carrot-prop{
   position:absolute;
   /* sidewalk level, same ground line as the hot-dog cart */

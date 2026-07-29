@@ -17,6 +17,7 @@ assets/
                         walk-cycle frames, dance frames, point-gesture frames,
                         carrot-peddler frames, cart prop, grain overlay texture)
   audio/                All sound effects + ambience track (mp3)
+  video/                Video clips played in on-page popups (mp4)
 ```
 
 ## Why this layout

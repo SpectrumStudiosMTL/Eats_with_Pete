@@ -8,8 +8,8 @@ const POINT_FG_FRAMES = ["assets/images/point_fg_01.png", "assets/images/point_f
 const YEAH_FRAMES = ["assets/images/yeah_01.png", "assets/images/yeah_02.png", "assets/images/yeah_03.png", "assets/images/yeah_04.png", "assets/images/yeah_05.png", "assets/images/yeah_06.png", "assets/images/yeah_07.png", "assets/images/yeah_08.png", "assets/images/yeah_09.png", "assets/images/yeah_10.png"];
 const DISCO_FRAMES = ["assets/images/disco_01.png", "assets/images/disco_02.png", "assets/images/disco_03.png", "assets/images/disco_04.png", "assets/images/disco_05.png", "assets/images/disco_06.png", "assets/images/disco_07.png", "assets/images/disco_08.png", "assets/images/disco_09.png", "assets/images/disco_10.png", "assets/images/disco_11.png", "assets/images/disco_12.png", "assets/images/disco_13.png", "assets/images/disco_14.png", "assets/images/disco_15.png", "assets/images/disco_16.png", "assets/images/disco_17.png", "assets/images/disco_18.png", "assets/images/disco_19.png", "assets/images/disco_20.png"];
 const JAZZHANDS_FRAMES = ["assets/images/jazzhands_01.png", "assets/images/jazzhands_02.png", "assets/images/jazzhands_03.png", "assets/images/jazzhands_04.png", "assets/images/jazzhands_05.png", "assets/images/jazzhands_06.png", "assets/images/jazzhands_07.png", "assets/images/jazzhands_08.png", "assets/images/jazzhands_09.png", "assets/images/jazzhands_10.png", "assets/images/jazzhands_11.png", "assets/images/jazzhands_12.png", "assets/images/jazzhands_13.png", "assets/images/jazzhands_14.png", "assets/images/jazzhands_15.png", "assets/images/jazzhands_16.png", "assets/images/jazzhands_17.png", "assets/images/jazzhands_18.png"];
-const CARROT_FRAMES = ["assets/images/carrot_01.png", "assets/images/carrot_02.png", "assets/images/carrot_03.png", "assets/images/carrot_04.png", "assets/images/carrot_05.png", "assets/images/carrot_06.png", "assets/images/carrot_07.png", "assets/images/carrot_08.png", "assets/images/carrot_09.png", "assets/images/carrot_10.png", "assets/images/carrot_11.png", "assets/images/carrot_12.png", "assets/images/carrot_13.png", "assets/images/carrot_14.png", "assets/images/carrot_15.png", "assets/images/carrot_16.png", "assets/images/carrot_17.png", "assets/images/carrot_18.png", "assets/images/carrot_19.png", "assets/images/carrot_20.png", "assets/images/carrot_21.png"];
-const BANANA_STAND_FRAMES = Array.from({length:38}, (_, i) => `assets/images/banana_stand_${String(i+1).padStart(2,'0')}.png`);
+const CARROT_FRAMES = Array.from({length:22}, (_, i) => `assets/images/carrot_${String(i+1).padStart(2,'0')}.png`);
+const BANANA_STAND_FRAMES = Array.from({length:32}, (_, i) => `assets/images/banana_stand_${String(i+1).padStart(2,'0')}.png`);
 const HANDSUP_FRAMES = Array.from({length:47}, (_, i) => `assets/images/handsup_${String(i+1).padStart(2,'0')}.png`);
 
 
@@ -60,6 +60,7 @@ const PETE_HEIGHT_RATIO = 0.34;
    ============================================================ */
 let peteState = 'idle';
 let hasArrived = false; // true once the user has started scrolling at least once
+let lostFoundOpen = false; // true while the Lost and Found video modal is open — freezes scroll input
 
 let peteOffsetTarget = 0;   // where Pete should sit, relative to screen centre
 let peteOffsetCurrent = 0;  // eased actual position
@@ -357,6 +358,7 @@ function queueScroll(deltaY){
 }
 
 window.addEventListener('wheel', (e) => {
+  if(lostFoundOpen) return; // don't walk Pete behind the video popup
   e.preventDefault();
   // deltaMode 1 = lines (typical mouse wheel notches) — normalize to ~px
   const px = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
@@ -368,6 +370,7 @@ window.addEventListener('touchstart', (e) => {
   touchStartY = e.touches[0].clientY;
 }, { passive:true });
 window.addEventListener('touchmove', (e) => {
+  if(lostFoundOpen) return;
   if(touchStartY === null) return;
   const y = e.touches[0].clientY;
   queueScroll(touchStartY - y);
@@ -380,6 +383,9 @@ const SCROLL_KEY_PX = {
   'PageDown': 400, 'PageUp': -400,
 };
 window.addEventListener('keydown', (e) => {
+  // leave Space/Arrow keys alone while the video modal is open — they're
+  // the native <video> controls' own play/pause/seek shortcuts
+  if(lostFoundOpen) return;
   if(e.key in SCROLL_KEY_PX){
     e.preventDefault();
     queueScroll(SCROLL_KEY_PX[e.key]);
@@ -525,4 +531,43 @@ function unlockAudioOnce(){
   UNLOCK_EVENTS.forEach(ev => window.removeEventListener(ev, unlockAudioOnce, true));
 }
 UNLOCK_EVENTS.forEach(ev => window.addEventListener(ev, unlockAudioOnce, { capture:true, passive:true }));
+
+// --- Lost and Found: click the icon to pop up the video --------------
+const lostFoundIcon = document.getElementById('lostFoundIcon');
+const lostFoundModal = document.getElementById('lostFoundModal');
+const lostFoundBackdrop = document.getElementById('lostFoundBackdrop');
+const lostFoundClose = document.getElementById('lostFoundClose');
+const lostFoundVideo = document.getElementById('lostFoundVideo');
+
+function openLostFound(){
+  lostFoundOpen = true;
+  lostFoundModal.classList.add('open');
+  lostFoundModal.setAttribute('aria-hidden', 'false');
+  lostFoundVideo.currentTime = 0;
+  lostFoundVideo.play().catch(() => {});
+}
+
+function closeLostFound(){
+  lostFoundOpen = false;
+  lostFoundModal.classList.remove('open');
+  lostFoundModal.setAttribute('aria-hidden', 'true');
+  lostFoundVideo.pause();
+}
+
+lostFoundIcon.addEventListener('click', (e) => {
+  e.stopPropagation();
+  openLostFound();
+});
+lostFoundIcon.addEventListener('keydown', (e) => {
+  if(e.key === 'Enter' || e.key === ' '){
+    e.preventDefault();
+    openLostFound();
+  }
+});
+lostFoundBackdrop.addEventListener('click', closeLostFound);
+lostFoundClose.addEventListener('click', closeLostFound);
+lostFoundVideo.addEventListener('ended', closeLostFound);
+window.addEventListener('keydown', (e) => {
+  if(lostFoundOpen && e.key === 'Escape') closeLostFound();
+});
 

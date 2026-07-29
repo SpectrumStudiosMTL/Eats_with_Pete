@@ -37,6 +37,13 @@
              on La Belle Province's storefront (~65.9% of the art width) -->
         <img class="banana-stand-prop" id="bananaStandImg" src="" alt="">
 
+        <!-- Lost and Found — clicking opens a popup that plays the video.
+             PLACEHOLDER icon (assets/images/lost_and_found_icon_placeholder.svg)
+             — swap the src for real art whenever it's ready, no code changes
+             needed. Sits on the blank grey wall panel right of Schwartz's,
+             before the Garage sign. -->
+        <img class="lost-found-icon" id="lostFoundIcon" src="assets/images/lost_and_found_icon_placeholder.svg" alt="Lost and Found" role="button" tabindex="0">
+
 
 
 <audio id="hotdogSound" src="assets/audio/hotdog_sound.mp3" preload="auto"></audio>
@@ -70,6 +77,14 @@
 
 
 <button id="muteBtn" class="pixel" aria-label="Mute sound" title="Mute sound">🔊</button>
+
+<div class="video-modal" id="lostFoundModal" aria-hidden="true">
+  <div class="video-modal-backdrop" id="lostFoundBackdrop"></div>
+  <div class="video-modal-content">
+    <button class="video-modal-close" id="lostFoundClose" aria-label="Close">&times;</button>
+    <video id="lostFoundVideo" src="assets/video/lost_and_found.mp4" controls playsinline></video>
+  </div>
+</div>
 
 <div class="hint" id="hint">scroll to walk →</div>
 
