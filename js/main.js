@@ -263,8 +263,8 @@ const heyManSound = document.getElementById('heyManSound');
 const PROXIMITY_SOUND_TRIGGER_PX = 260; // a bit wider than the point-gesture trigger, so it cues in a little earlier
 const PROXIMITY_SOUND_RESET_PX = 650;
 const proximitySoundTargets = [
-  { el: cartProp,   sound: hotdogSound, triggered:false },
-  { el: carrotProp, sound: heyManSound, triggered:false },
+  { el: cartProp,   sound: hotdogSound, triggered:false, pending:false },
+  { el: carrotProp, sound: heyManSound, triggered:false, pending:false },
 ];
 
 function checkProximitySounds(){
@@ -281,12 +281,22 @@ function checkProximitySounds(){
   for(const t of proximitySoundTargets){
     const r = t.el.getBoundingClientRect();
     const dist = Math.abs((r.left + r.width/2) - centerX);
-    if(dist < PROXIMITY_SOUND_TRIGGER_PX && !t.triggered){
-      t.triggered = true;
+    // Only latch `triggered` once play() actually resolves. Browsers block
+    // unprompted audio.play() until the page has seen a real user gesture
+    // (click/keydown/touchstart) — scrolling itself doesn't count in
+    // Chrome/Firefox. If we latched on the attempt instead of the result,
+    // one blocked call permanently gave up on that prop for the rest of
+    // the pass (Pete can never walk back to it), which is why this only
+    // "worked" when the visitor happened to have already clicked or
+    // pressed a key before reaching it. Retrying every frame the whole
+    // time Pete is within range gives the unlock (see below) many more
+    // chances to have landed by the time he's closest.
+    if(dist < PROXIMITY_SOUND_TRIGGER_PX && !t.triggered && !t.pending){
+      t.pending = true;
       t.sound.currentTime = 0;
-      t.sound.play().catch(() => {});
+      t.sound.play().then(() => { t.triggered = true; }).catch(() => { t.pending = false; });
     }
-    if(dist > PROXIMITY_SOUND_RESET_PX) t.triggered = false;
+    if(dist > PROXIMITY_SOUND_RESET_PX){ t.triggered = false; t.pending = false; }
   }
 }
 
@@ -448,16 +458,33 @@ muteBtn.addEventListener('click', () => {
   if(!isMuted) ambienceSound.play().catch(() => {});
 });
 
-// --- ambience: play on load; browsers block unmuted autoplay before the
-// first user interaction, so retry once on the first scroll/click/key/touch ---
-function tryStartAmbience(){
-  ambienceSound.play().catch(() => {});
+// --- ambience: attempt autoplay immediately on load, in case this domain
+// has already crossed the browser's media-engagement threshold ---
+ambienceSound.play().catch(() => {});
+
+// --- unlock every sound on the page on the first real user gesture -------
+// Browsers require an actual "user activation" event (click, keydown,
+// touchstart, pointerdown) before audio.play() is allowed to succeed
+// unprompted — and scrolling (wheel/trackpad) does NOT count as one in
+// Chrome or Firefox. This page's whole interaction model is "scroll to
+// walk", so a visitor who only ever scrolls may never trip a qualifying
+// gesture, and every proximity/ambience sound stays silently blocked for
+// the rest of the session. We listen (capture phase, once) for the widest
+// practical set of real gesture types and, on the first one, play()+pause()
+// every <audio> element so all of them are unlocked together — regardless
+// of which specific interaction ends up being the one that qualifies.
+const allSounds = [hotdogSound, carrotSound1, carrotSound2, heyManSound, ambienceSound];
+const UNLOCK_EVENTS = ['pointerdown', 'mousedown', 'keydown', 'touchstart', 'wheel'];
+let audioUnlocked = false;
+function unlockAudioOnce(){
+  if(audioUnlocked) return;
+  audioUnlocked = true;
+  allSounds.forEach(a => {
+    a.play().then(() => {
+      if(a !== ambienceSound){ a.pause(); a.currentTime = 0; }
+    }).catch(() => {});
+  });
+  UNLOCK_EVENTS.forEach(ev => window.removeEventListener(ev, unlockAudioOnce, true));
 }
-tryStartAmbience();
-const ambienceRetryEvents = ['scroll', 'click', 'keydown', 'touchstart'];
-function ambienceRetryOnce(){
-  tryStartAmbience();
-  ambienceRetryEvents.forEach(ev => window.removeEventListener(ev, ambienceRetryOnce));
-}
-ambienceRetryEvents.forEach(ev => window.addEventListener(ev, ambienceRetryOnce, { passive:true }));
+UNLOCK_EVENTS.forEach(ev => window.addEventListener(ev, unlockAudioOnce, { capture:true, passive:true }));
 
