@@ -21,19 +21,24 @@ const HANDSUP_FRAMES = Array.from({length:47}, (_, i) => `assets/images/handsup_
 // fetchPriority 'low' keeps these from competing with the background art
 // and Pete's first frame for bandwidth, while still warming the cache well
 // ahead of when each sequence actually gets used.
-function preloadFrames(frameArrays){
+function preloadFrames(frameArrays, priority){
   const seen = new Set();
   for(const frames of frameArrays){
     for(const src of frames){
       if(seen.has(src)) continue;
       seen.add(src);
       const img = new Image();
-      img.fetchPriority = 'low';
+      if(priority) img.fetchPriority = priority;
       img.src = src;
     }
   }
 }
-preloadFrames([WALK_FRAMES, POINT_BG_FRAMES, POINT_FG_FRAMES, DISCO_FRAMES, JAZZHANDS_FRAMES, CARROT_FRAMES, BANANA_STAND_FRAMES, HANDSUP_FRAMES]);
+// DISCO/HANDSUP/WALK load at normal priority and gate the loading screen
+// (see boot() below) — everything else can trickle in at low priority
+// since it isn't needed until later (a click, a scroll, or a prop the
+// user hasn't reached yet).
+preloadFrames([DISCO_FRAMES, HANDSUP_FRAMES, WALK_FRAMES]);
+preloadFrames([POINT_BG_FRAMES, POINT_FG_FRAMES, JAZZHANDS_FRAMES, CARROT_FRAMES, BANANA_STAND_FRAMES], 'low');
 
 const bgImg = document.getElementById('bgImg');
 const track = document.getElementById('track');
@@ -82,6 +87,7 @@ const PETE_HEIGHT_RATIO = 0.34;
 let peteState = 'idle';
 let hasArrived = false; // true once the user has started scrolling at least once
 let lostFoundOpen = false; // true while the Lost and Found video modal is open — freezes scroll input
+let siteLoading = true; // true until boot() below decides enough has loaded — freezes scroll input
 
 let peteOffsetTarget = 0;   // where Pete should sit, relative to screen centre
 let peteOffsetCurrent = 0;  // eased actual position
@@ -379,7 +385,7 @@ function queueScroll(deltaY){
 }
 
 window.addEventListener('wheel', (e) => {
-  if(lostFoundOpen) return; // don't walk Pete behind the video popup
+  if(lostFoundOpen || siteLoading) return; // don't walk Pete behind the video popup / loading screen
   e.preventDefault();
   // deltaMode 1 = lines (typical mouse wheel notches) — normalize to ~px
   const px = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
@@ -391,7 +397,7 @@ window.addEventListener('touchstart', (e) => {
   touchStartY = e.touches[0].clientY;
 }, { passive:true });
 window.addEventListener('touchmove', (e) => {
-  if(lostFoundOpen) return;
+  if(lostFoundOpen || siteLoading) return;
   if(touchStartY === null) return;
   const y = e.touches[0].clientY;
   queueScroll(touchStartY - y);
@@ -406,7 +412,7 @@ const SCROLL_KEY_PX = {
 window.addEventListener('keydown', (e) => {
   // leave Space/Arrow keys alone while the video modal is open — they're
   // the native <video> controls' own play/pause/seek shortcuts
-  if(lostFoundOpen) return;
+  if(lostFoundOpen || siteLoading) return;
   if(e.key in SCROLL_KEY_PX){
     e.preventDefault();
     queueScroll(SCROLL_KEY_PX[e.key]);
@@ -504,6 +510,47 @@ carrotImg.src = CARROT_FRAMES[0];
 bananaStandImg.src = BANANA_STAND_FRAMES[0];
 layout();
 requestAnimationFrame(renderLoop);
+
+// --- loading screen: Pete's Disco spin, shown until the assets the site
+// actually needs first (background art, the idle loop, the walk cycle)
+// are ready, or LOADING_TIMEOUT_MS elapses — whichever comes first, so a
+// slow connection gets a spinner instead of a stuck page rather than an
+// indefinite wait. Scroll input stays frozen (siteLoading, checked in the
+// wheel/touch/keydown handlers above) until this resolves. ------------
+const loadingScreen = document.getElementById('loadingScreen');
+const loadingPeteImg = document.getElementById('loadingPeteImg');
+const LOADING_SPIN_FRAME_MS = 90;
+const LOADING_TIMEOUT_MS = 6000;
+
+let loadingSpinIndex = 0;
+const loadingSpinTimer = setInterval(() => {
+  loadingSpinIndex = (loadingSpinIndex + 1) % DISCO_FRAMES.length;
+  loadingPeteImg.src = DISCO_FRAMES[loadingSpinIndex];
+}, LOADING_SPIN_FRAME_MS);
+loadingPeteImg.src = DISCO_FRAMES[0];
+
+function loadImage(src){
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = resolve;
+    img.onerror = resolve; // don't let one broken asset hang the loading screen forever
+    img.src = src;
+  });
+}
+
+const criticalLoad = Promise.all([
+  loadImage(bgImg.getAttribute('src')),
+  ...DISCO_FRAMES.map(loadImage),
+  ...HANDSUP_FRAMES.map(loadImage),
+  ...WALK_FRAMES.map(loadImage),
+]);
+const loadingTimeout = new Promise((resolve) => setTimeout(resolve, LOADING_TIMEOUT_MS));
+
+Promise.race([criticalLoad, loadingTimeout]).then(() => {
+  clearInterval(loadingSpinTimer);
+  siteLoading = false;
+  loadingScreen.classList.add('hidden');
+});
 
 // --- mute / sound-on toggle, applies to every audio element on the page ---
 let isMuted = false;
