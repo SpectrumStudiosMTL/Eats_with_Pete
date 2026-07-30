@@ -249,8 +249,8 @@ carrotProp.addEventListener('click', (e) => {
 const bananaStandSound = document.getElementById('bananaStandSound');
 bananaStandImg.addEventListener('click', (e) => {
   e.stopPropagation();
-  bananaStandSound.currentTime = 0;
-  bananaStandSound.play().catch(() => {});
+  // click sound removed — it overlapped the mini-game's own opening cues;
+  // the proximity-triggered auto cue elsewhere still plays as Pete walks up
   if(window.BananaGame) window.BananaGame.open();
 });
 
@@ -594,8 +594,10 @@ Promise.race([criticalLoad, loadingTimeout]).then(() => {
 let isMuted = false;
 try { isMuted = localStorage.getItem('eatsWithPeteMuted') === '1'; } catch(e) {}
 
+window.isSiteMuted = () => isMuted; // read by banana-game.js — Web Audio synth SFX aren't <audio> elements, so applyMuteState()'s querySelectorAll can't reach them
+
 function applyMuteState(){
-  document.querySelectorAll('audio').forEach(a => { a.muted = isMuted; });
+  document.querySelectorAll('audio, video').forEach(a => { a.muted = isMuted; });
   muteBtn.textContent = isMuted ? '🔇' : '🔊';
   muteBtn.setAttribute('aria-label', isMuted ? 'Unmute sound' : 'Mute sound');
 }
@@ -623,11 +625,12 @@ ambienceSound.play().catch(() => {});
 // practical set of real gesture types and, on the first one, play()+pause()
 // every <audio> element so all of them are unlocked together — regardless
 // of which specific interaction ends up being the one that qualifies.
-const gameChompSound = document.getElementById('gameChompSound');
-const gamePowerUpSound = document.getElementById('gamePowerUpSound');
-const gameArrestedSound = document.getElementById('gameArrestedSound');
-const gameVictorySound = document.getElementById('gameVictorySound');
-const allSounds = [hotdogSound, carrotSound1, carrotSound2, heyManSound, bananaStandSound, ambienceSound, gameChompSound, gamePowerUpSound, gameArrestedSound, gameVictorySound];
+const gameBananaSound1 = document.getElementById('gameBananaSound1');
+const gameBananaSound2 = document.getElementById('gameBananaSound2');
+const gameFreezeSound = document.getElementById('gameFreezeSound');
+const gamePeteArrghSound = document.getElementById('gamePeteArrghSound');
+const gameMiniMusic = document.getElementById('gameMiniMusic');
+const allSounds = [hotdogSound, carrotSound1, carrotSound2, heyManSound, bananaStandSound, ambienceSound, gameBananaSound1, gameBananaSound2, gameFreezeSound, gamePeteArrghSound, gameMiniMusic];
 const UNLOCK_EVENTS = ['pointerdown', 'mousedown', 'keydown', 'touchstart', 'wheel'];
 let audioUnlocked = false;
 function unlockAudioOnce(){

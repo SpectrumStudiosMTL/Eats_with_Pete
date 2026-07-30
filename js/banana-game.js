@@ -22,9 +22,9 @@ const MAZE = [
   "#....##.....##....#",
   "#....##.....##....#",
   "#.................#",
-  "#.......#D#.......#",
-  "#.......#H#.......#",
-  "#.......###.......#",
+  "#.....###D###.....#",
+  "#.....#HHHHH#.....#",
+  "#......#####......#",
   "#.................#",
   "#....##.....##....#",
   "#....##..P..##....#",
@@ -85,7 +85,6 @@ const FRIGHTENED_DURATION = 7.5; // seconds
 const FRIGHTENED_WARNING = 2.0;  // seconds left when flicker starts
 const HOLD_DURATION = 1.0;       // seconds an eaten B.R.O. waits in the house
 const DYING_FREEZE = 1.4;
-const ROUND_WIN_FREEZE = 1.6;
 const READY_FREEZE = 1.1;
 const MAX_DT = 0.05; // caps a stale/huge first tick (e.g. tab was backgrounded)
 
@@ -100,6 +99,7 @@ const IMG_BANANA = img('assets/images/game_banana.png');
 const IMG_CARROT = img('assets/images/game_carrot.png');
 const IMG_BRO_HEAD = img('assets/images/game_bro_head.png');
 const IMG_ARREST_WARRANT = img('assets/images/game_arrest_warrant.png');
+const CHEESE_WHEEL_FRAMES = Array.from({length: 32}, (_, i) => img('assets/images/game_cheese_wheel_' + String(i).padStart(2, '0') + '.png'));
 
 // --- DOM ------------------------------------------------------------
 const modal = document.getElementById('bananaGameModal');
@@ -111,15 +111,136 @@ const hudLives = document.getElementById('gameLives');
 const hudRound = document.getElementById('gameRound');
 const hudScore = document.getElementById('gameScore');
 const messageEl = document.getElementById('gameMessage');
-const chompSound = document.getElementById('gameChompSound');
-const powerUpSound = document.getElementById('gamePowerUpSound');
-const arrestedSound = document.getElementById('gameArrestedSound');
-const victorySound = document.getElementById('gameVictorySound');
+const freezeSound = document.getElementById('gameFreezeSound');
+const peteArrghSound = document.getElementById('gamePeteArrghSound');
+const miniMusic = document.getElementById('gameMiniMusic');
+const ambienceSound = document.getElementById('ambienceSound'); // main site's background track — ducked while the game is open
+const cheeseRoomVideo = document.getElementById('cheeseRoomVideo');
+const handcuffsVideo = document.getElementById('handcuffsVideo');
+const gameOverPrompt = document.getElementById('gameOverPrompt');
+const playAgainBtn = document.getElementById('playAgainBtn');
 
 canvas.width = COLS * CELL;
 canvas.height = ROWS * CELL;
+miniMusic.volume = 0.22; // lowered further, still too loud at 0.35 per feedback
 
 function playSfx(a){ try{ a.currentTime = 0; a.play().catch(()=>{}); }catch(e){} }
+
+// --- serialized SFX queue -------------------------------------------
+// Playing multiple one-shot sounds at the same moment (e.g. a catch
+// landing right as another cue fires) stacked audio on top of itself
+// and felt chaotic. Route every one-shot SFX through a shared promise
+// chain so only one plays at a time — anything else queued waits its
+// turn instead of overlapping.
+let sfxChain = Promise.resolve();
+function queueSfx(taskFn){
+  sfxChain = sfxChain.then(taskFn).catch(() => {});
+}
+function playAudioAwait(audioEl){
+  return new Promise(resolve => {
+    const onEnd = () => { audioEl.removeEventListener('ended', onEnd); resolve(); };
+    audioEl.addEventListener('ended', onEnd);
+    audioEl.currentTime = 0;
+    audioEl.play().catch(() => { audioEl.removeEventListener('ended', onEnd); resolve(); });
+  });
+}
+function waitMs(ms){ return new Promise(resolve => setTimeout(resolve, ms)); }
+
+// --- synthesized SFX (Web Audio) ------------------------------------
+// No files were supplied for these two, so they're generated tones
+// instead of asset files — same lightweight-easter-egg spirit as the
+// rest of the game. Respects the site's mute toggle via the
+// window.isSiteMuted bridge, since these never touch an <audio>
+// element for applyMuteState() to reach.
+let audioCtx = null;
+function getAudioCtx(){
+  if(!audioCtx){
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(!AC) return null;
+    audioCtx = new AC();
+  }
+  if(audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+  return audioCtx;
+}
+function synthTone(freqStart, freqEnd, duration, type, gainPeak, startDelay){
+  if(window.isSiteMuted && window.isSiteMuted()) return;
+  const ctxA = getAudioCtx();
+  if(!ctxA) return;
+  try{
+    const t0 = ctxA.currentTime + (startDelay || 0);
+    const osc = ctxA.createOscillator();
+    const gain = ctxA.createGain();
+    osc.type = type || 'square';
+    osc.frequency.setValueAtTime(freqStart, t0);
+    osc.frequency.linearRampToValueAtTime(freqEnd, t0 + duration);
+    gain.gain.setValueAtTime(0, t0);
+    gain.gain.linearRampToValueAtTime(gainPeak || 0.15, t0 + Math.min(0.02, duration/4));
+    gain.gain.linearRampToValueAtTime(0, t0 + duration);
+    osc.connect(gain); gain.connect(ctxA.destination);
+    osc.start(t0); osc.stop(t0 + duration + 0.02);
+  }catch(e){}
+}
+function playPowerUpSfx(){
+  queueSfx(() => { synthTone(220, 660, 0.35, 'square', 0.12); return waitMs(370); });
+}
+function playVictorySfx(){
+  queueSfx(() => {
+    [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => { // C5 E5 G5 C6, ascending fanfare
+      synthTone(f, f, 0.16, 'square', 0.12, i * 0.13);
+    });
+    return waitMs(700);
+  });
+}
+
+// Plays centered and FREEZES gameplay (the 'roundWon' state returns early
+// in update(), see below) the moment the cheese is collected — it's short
+// enough that waiting for it feels fine. Advances to the next round when
+// the video ends, with a fallback timeout in case it can't play at all
+// (missing file, autoplay blocked, etc.) so the game never gets stuck.
+let cheeseVideoFallback = null;
+function playCheeseRoomVideo(){
+  cheeseRoomVideo.currentTime = 0;
+  cheeseRoomVideo.classList.add('show');
+  cheeseRoomVideo.play().catch(() => {});
+  clearTimeout(cheeseVideoFallback);
+  cheeseVideoFallback = setTimeout(advanceAfterCheeseVideo, 8000);
+}
+function hideCheeseRoomVideo(){
+  clearTimeout(cheeseVideoFallback);
+  cheeseRoomVideo.pause();
+  cheeseRoomVideo.classList.remove('show');
+}
+function advanceAfterCheeseVideo(){
+  clearTimeout(cheeseVideoFallback);
+  hideCheeseRoomVideo();
+  if(state === 'roundWon') startNextRound();
+}
+cheeseRoomVideo.addEventListener('ended', advanceAfterCheeseVideo);
+
+// --- game-over sequence: handcuffs video, then a Play Again prompt ------
+let gameOverPromptTimeout = null;
+function playGameOverSequence(){
+  handcuffsVideo.currentTime = 0;
+  handcuffsVideo.classList.add('show');
+  handcuffsVideo.play().catch(() => {});
+  clearTimeout(gameOverPromptTimeout);
+  gameOverPromptTimeout = setTimeout(showGameOverPrompt, 8000); // fallback in case the video can't play
+}
+function showGameOverPrompt(){
+  clearTimeout(gameOverPromptTimeout);
+  gameOverPrompt.classList.add('show');
+}
+function hideGameOverSequence(){
+  clearTimeout(gameOverPromptTimeout);
+  handcuffsVideo.pause();
+  handcuffsVideo.classList.remove('show');
+  gameOverPrompt.classList.remove('show');
+}
+handcuffsVideo.addEventListener('ended', showGameOverPrompt);
+playAgainBtn.addEventListener('click', () => {
+  hideGameOverSequence();
+  resetGame();
+});
 
 // --- game state -------------------------------------------------------
 let livePellets, livePowers;
@@ -150,6 +271,12 @@ function resetGame(){
   score = 0;
   resetRoundBoard();
   setState('ready', READY_FREEZE);
+  restartMusic();
+}
+
+function restartMusic(){
+  miniMusic.currentTime = 0;
+  miniMusic.play().catch(() => {});
 }
 
 function setState(next, timer){
@@ -229,11 +356,11 @@ function onPeterEnterCell(){
   if(livePellets.has(key)){
     livePellets.delete(key);
     score += SCORE_PELLET;
-    playSfx(chompSound);
+    // pellet SFX disabled for now, per feedback
   } else if(livePowers.has(key)){
     livePowers.delete(key);
     score += SCORE_POWER;
-    playSfx(powerUpSound);
+    playPowerUpSfx();
     frightenedTimer = FRIGHTENED_DURATION;
     peter.speedMult = SPEED_BOOST_MULT;
     for(const bro of bros){
@@ -305,9 +432,15 @@ function dist(a, b){ return Math.hypot(a.col - b.col, a.row - b.row); }
 // --- round / life transitions --------------------------------------------
 function loseLife(){
   lives--;
-  playSfx(arrestedSound);
-  if(lives <= 0){
+  miniMusic.pause(); // stop the music bed so the catch sound is actually audible instead of buried
+  const isGameOver = lives <= 0;
+  queueSfx(async () => {
+    await playAudioAwait(freezeSound);
+    if(!isGameOver) await playAudioAwait(peteArrghSound); // skipped on the final life — it would overlap the handcuffs video
+  });
+  if(isGameOver){
     setState('gameOver', 0);
+    playGameOverSequence();
   } else {
     setState('dying', DYING_FREEZE);
   }
@@ -319,15 +452,20 @@ function repositionAfterDeath(){
   peter.invincibleTimer = RESPAWN_GRACE;
   bros = makeBros();
   frightenedTimer = 0;
+  restartMusic(); // picks back up from the beginning once play resumes
 }
 
 function winRound(){
   score += SCORE_CHEESE;
+  playCheeseRoomVideo();
   if(round >= TOTAL_ROUNDS){
-    playSfx(victorySound);
+    playVictorySfx();
+    spawnConfetti();
     setState('gameWon', 0);
   } else {
-    setState('roundWon', ROUND_WIN_FREEZE);
+    // no fixed timer here — advances once the cheese-room video ends
+    // (or its fallback timeout), see playCheeseRoomVideo() above
+    setState('roundWon', 0);
   }
 }
 
@@ -349,12 +487,9 @@ function update(dt){
     if(stateTimer <= 0){ repositionAfterDeath(); setState('playing', 0); }
     return;
   }
-  if(state === 'roundWon'){
-    stateTimer -= dt;
-    if(stateTimer <= 0) startNextRound();
-    return;
-  }
-  if(state === 'gameWon' || state === 'gameOver') return;
+  if(state === 'roundWon') return; // advances via the cheese-room video, see playCheeseRoomVideo()/advanceAfterCheeseVideo()
+  if(state === 'gameWon'){ updateConfetti(dt); return; }
+  if(state === 'gameOver') return;
 
   // state === 'playing'
   stepPeter(dt);
@@ -403,6 +538,20 @@ function drawDoor(){
   ctx.fillStyle = open ? '#ffd84d' : '#c62a2a';
   ctx.fillRect(DOOR_COL * CELL + 3, DOOR_ROW * CELL + CELL/2 - 3, CELL - 6, 5);
 }
+function drawRoomSign(){
+  const cx = CHEESE_COL * CELL + CELL/2;
+  const cy = (DOOR_ROW + 2) * CELL + CELL/2; // painted on the room's bottom (seal) wall — solid, nothing walks through it
+  ctx.save();
+  ctx.font = "7px 'Press Start 2P', monospace";
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#000';
+  ctx.strokeText('CHEESE BACKROOMS', cx, cy);
+  ctx.fillStyle = '#ffd84d';
+  ctx.fillText('CHEESE BACKROOMS', cx, cy);
+  ctx.restore();
+}
 function drawPellets(){
   // pixel-art assets: keep their hard edges, no smoothing
   ctx.imageSmoothingEnabled = false;
@@ -418,20 +567,21 @@ function drawPellets(){
   }
   ctx.imageSmoothingEnabled = true;
 }
+const CHEESE_WHEEL_FRAME_MS = 80;
+let cheeseWheelFrameIndex = 0;
+let cheeseWheelLastStep = 0;
 function drawCheese(){
-  if(livePellets.size + livePowers.size !== 0) return;
+  // floats in the room all the time now, visible through the door even
+  // while it's still closed — only actually collectible once the door
+  // opens (gated separately in onPeterEnterCell/isWalkable)
+  const now = performance.now();
+  if(now - cheeseWheelLastStep > CHEESE_WHEEL_FRAME_MS){
+    cheeseWheelLastStep = now;
+    cheeseWheelFrameIndex = (cheeseWheelFrameIndex + 1) % CHEESE_WHEEL_FRAMES.length;
+  }
   const cx = CHEESE_COL*CELL + CELL/2, cy = CHEESE_ROW*CELL + CELL/2;
-  const bob = Math.sin(performance.now()/220) * 2;
-  ctx.fillStyle = '#ffd84d';
-  ctx.beginPath();
-  ctx.moveTo(cx - CELL*0.4, cy + CELL*0.3 + bob);
-  ctx.lineTo(cx + CELL*0.4, cy + CELL*0.3 + bob);
-  ctx.lineTo(cx, cy - CELL*0.4 + bob);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = '#c69a1e';
-  ctx.beginPath(); ctx.arc(cx - 4, cy + 5 + bob, 2.2, 0, Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx + 3, cy + 10 + bob, 1.8, 0, Math.PI*2); ctx.fill();
+  const size = CELL * 1.3;
+  ctx.drawImage(CHEESE_WHEEL_FRAMES[cheeseWheelFrameIndex], cx - size/2, cy - size/2, size, size);
 }
 function drawPeter(){
   const cx = peter.col*CELL + CELL/2, cy = peter.row*CELL + CELL/2;
@@ -487,6 +637,48 @@ function drawCaughtFlavor(){
   ctx.restore();
 }
 
+// --- confetti (final win only) --------------------------------------
+const CONFETTI_COLORS = ['#ffd84d', '#c62a2a', '#f3ecd8', '#4caf50', '#2a5fd8'];
+let confetti = [];
+function spawnConfetti(){
+  confetti = [];
+  for(let i = 0; i < 90; i++){
+    confetti.push({
+      x: Math.random() * canvas.width,
+      y: -Math.random() * canvas.height, // staggered so it's already mid-fall on the first frame
+      vx: (Math.random() - 0.5) * 40,
+      vy: 40 + Math.random() * 60,
+      size: 4 + Math.random() * 4,
+      color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
+      rot: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 6,
+    });
+  }
+}
+function updateConfetti(dt){
+  for(const p of confetti){
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vy += 20 * dt;
+    p.rot += p.rotSpeed * dt;
+    if(p.y > canvas.height + 10){ // recycle back to the top — keeps it falling for as long as the win screen is up
+      p.y = -10;
+      p.x = Math.random() * canvas.width;
+      p.vy = 40 + Math.random() * 60;
+    }
+  }
+}
+function drawConfetti(){
+  for(const p of confetti){
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.rot);
+    ctx.fillStyle = p.color;
+    ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size * 0.6);
+    ctx.restore();
+  }
+}
+
 function render(){
   ctx.imageSmoothingEnabled = true;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -494,11 +686,13 @@ function render(){
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   drawWalls();
   drawDoor();
+  drawRoomSign();
   drawPellets();
   drawCheese();
   drawCaughtFlavor();
   for(const bro of bros) drawBro(bro);
   drawPeter();
+  if(state === 'gameWon') drawConfetti();
 
   let msg = '';
   if(state === 'ready') msg = 'READY!';
@@ -508,6 +702,7 @@ function render(){
   else if(state === 'gameOver') msg = 'GAME OVER';
   messageEl.textContent = msg;
   messageEl.style.whiteSpace = 'pre-line';
+  messageEl.classList.toggle('win', state === 'gameWon');
 }
 
 function updateHUD(){
@@ -537,6 +732,7 @@ function open(){
   modal.classList.add('open');
   modal.setAttribute('aria-hidden', 'false');
   document.addEventListener('keydown', handleKeydown, { capture: true });
+  ambienceSound.pause();
   lastTime = performance.now();
   rafId = requestAnimationFrame(loop);
 }
@@ -547,6 +743,10 @@ function close(){
   document.removeEventListener('keydown', handleKeydown, { capture: true });
   if(rafId) cancelAnimationFrame(rafId);
   rafId = null;
+  hideCheeseRoomVideo();
+  hideGameOverSequence();
+  miniMusic.pause();
+  ambienceSound.play().catch(() => {});
 }
 
 backdrop.addEventListener('click', close);
