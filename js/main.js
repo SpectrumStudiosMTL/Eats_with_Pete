@@ -69,6 +69,7 @@ let frameIndex = 0;
 let currentX = 0;
 let targetX = 0;
 let cartHomeLeftPx = 0; // cart-prop's screen-space "home" left offset (px), recomputed in layout()
+let broCarHomeLeftPx = 0; // same idea for the B.R.O. car
 let lastRenderedX = 0;
 let isWrapping = false;
 let maxScrollTop = 0; // one-way ratchet: highest scrollY reached so far (Pete can't walk backward)
@@ -127,8 +128,12 @@ function layout(){
   // cart-prop used to be `left:19%` of .scene (inside the transformed .track);
   // now it's a fixed sibling of #pete so its screen position is computed by
   // hand each frame in renderLoop as cartHomeLeftPx + currentX
-  const CART_LEFT_FRACTION = 0.19;
+  const CART_LEFT_FRACTION = 0.08; // moved left from 0.19 to make room for the B.R.O. car
   cartHomeLeftPx = viewportWidth + CART_LEFT_FRACTION * sceneWidth;
+
+  // B.R.O. car sits where the cart used to be, same fixed-sibling pattern
+  const BRO_CAR_LEFT_FRACTION = 0.19;
+  broCarHomeLeftPx = viewportWidth + BRO_CAR_LEFT_FRACTION * sceneWidth;
 
   const totalTrackWidth = viewportWidth + sceneWidth + viewportWidth;
   maxTranslate = Math.max(totalTrackWidth - viewportWidth, 0);
@@ -203,6 +208,7 @@ function updateTarget(){
       maxScrollTop = 1; // release the one-way ratchet so forward progress can resume
       track.style.transform = 'translateX(0px)';
       cartProp.style.transform = 'translate(' + cartHomeLeftPx + 'px, 50px)';
+      broCarProp.style.transform = 'translate(' + broCarHomeLeftPx + 'px, 0px)';
       setTimeout(() => { isWrapping = false; }, 50);
     });
   }
@@ -234,6 +240,8 @@ cartProp.addEventListener('click', (e) => {
   hotdogSound.currentTime = 0;
   hotdogSound.play().catch(() => {});
 });
+
+const broCarProp = document.getElementById('broCarProp');
 
 // --- click the carrot peddler: alternate gotthestuff -> lazerwave -> ... ---
 let carrotClickToggle = 0;
@@ -484,6 +492,7 @@ function renderLoop(){
   currentX = targetX;
   track.style.transform = 'translateX(' + currentX + 'px)';
   cartProp.style.transform = 'translate(' + (cartHomeLeftPx + currentX) + 'px, 50px)';
+  broCarProp.style.transform = 'translate(' + (broCarHomeLeftPx + currentX) + 'px, 0px)';
 
   if(peteOffsetTarget === 0){
     walkOffsetProgress = Math.min(-IDLE_OFFSET_PX, walkOffsetProgress + walkedThisFrame);
