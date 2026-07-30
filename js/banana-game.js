@@ -123,6 +123,8 @@ const playAgainBtn = document.getElementById('playAgainBtn');
 canvas.width = COLS * CELL;
 canvas.height = ROWS * CELL;
 miniMusic.volume = 0.22; // lowered further, still too loud at 0.35 per feedback
+freezeSound.volume = 0.55; // the B.R.O. catch cues were a little loud per feedback
+peteArrghSound.volume = 0.55;
 
 function playSfx(a){ try{ a.currentTime = 0; a.play().catch(()=>{}); }catch(e){} }
 
