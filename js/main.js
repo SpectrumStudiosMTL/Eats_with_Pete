@@ -255,6 +255,7 @@ carrotProp.addEventListener('click', (e) => {
 
 // --- click the banana stand: play its sound, and open the mini-game ---
 const bananaStandSound = document.getElementById('bananaStandSound');
+bananaStandSound.volume = 0.55; // the proximity auto-cue was a little loud per feedback
 bananaStandImg.addEventListener('click', (e) => {
   e.stopPropagation();
   // click sound removed — it overlapped the mini-game's own opening cues;
