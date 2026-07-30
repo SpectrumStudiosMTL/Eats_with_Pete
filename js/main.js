@@ -212,6 +212,7 @@ let peteClickToggle = 0;
 pete.addEventListener('click', () => {
   if(peteState === 'dance') return;
   peteState = 'dance';
+  scrollQueuePx = 0; // drop any in-flight scroll so Pete doesn't glide mid-dance
   const frames = (peteClickToggle % 2 === 0) ? DISCO_FRAMES : JAZZHANDS_FRAMES;
   peteClickToggle++;
   playAnim(frames, DANCE_FRAME_MS, null, () => {
@@ -393,7 +394,9 @@ function queueScroll(direction){
 }
 
 window.addEventListener('wheel', (e) => {
-  if(lostFoundOpen || siteLoading) return; // don't walk Pete behind the video popup / loading screen
+  // don't walk Pete behind the video popup / loading screen, or while
+  // he's mid-dance — a click-triggered dance should hold him in place
+  if(lostFoundOpen || siteLoading || peteState === 'dance') return;
   e.preventDefault();
   queueScroll(e.deltaY);
 }, { passive:false });
@@ -403,7 +406,7 @@ window.addEventListener('touchstart', (e) => {
   touchStartY = e.touches[0].clientY;
 }, { passive:true });
 window.addEventListener('touchmove', (e) => {
-  if(lostFoundOpen || siteLoading) return;
+  if(lostFoundOpen || siteLoading || peteState === 'dance') return;
   if(touchStartY === null) return;
   const y = e.touches[0].clientY;
   queueScroll(touchStartY - y);
@@ -418,7 +421,7 @@ const SCROLL_KEY_PX = {
 window.addEventListener('keydown', (e) => {
   // leave Space/Arrow keys alone while the video modal is open — they're
   // the native <video> controls' own play/pause/seek shortcuts
-  if(lostFoundOpen || siteLoading) return;
+  if(lostFoundOpen || siteLoading || peteState === 'dance') return;
   if(e.key in SCROLL_KEY_PX){
     e.preventDefault();
     queueScroll(SCROLL_KEY_PX[e.key]);
@@ -469,7 +472,8 @@ function renderLoop(){
   const now = performance.now();
   const dtMs = now - lastFrameTime;
   lastFrameTime = now;
-  drainScrollQueue(dtMs);
+  // frozen while dancing — see the click handler and input listeners above
+  if(peteState !== 'dance') drainScrollQueue(dtMs);
 
   // no easing here on purpose — currentX tracks targetX directly so walk
   // speed is set entirely by the fixed-rate scroll drain above, with no
