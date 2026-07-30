@@ -194,11 +194,12 @@ body{ font-family:'Baloo 2', sans-serif; color:var(--ink); background:#fff; }
      Found icon — nudge this % to taste once checked against the live art */
   bottom:13%;
   left:37%;
-  height:9%;
+  height:18%; /* scaled up 100% from 9% per feedback */
   width:auto;
   z-index:2; /* above the bg, below storefronts/props/Pete */
   pointer-events:none;
   user-select:none;
+  transform:translate(100px, -50px); /* nudged right 100px, up 50px per feedback */
 }
 
 .video-modal{
