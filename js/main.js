@@ -443,7 +443,22 @@ if(bgImg.complete && bgImg.naturalWidth > 0){
   bgImg.addEventListener('load', layout);
 }
 
-const OFFSET_EASE = 0.12;
+// Pete's idle-spot -> walking-position offset used to exponentially ease
+// toward its target — that always takes its biggest single step on the
+// very first frame, the same frame the sprite swaps from the HandsUp
+// idle pose to the walk cycle, so the pose change and a big sudden jump
+// toward the logo landed simultaneously (walk cycle never visibly seen
+// left of the logo). A fixed px/sec time-based fix for THAT introduced a
+// new problem: it ran on its own clock, independent of the leg-cycle
+// animation below (which is purely distance-based, driven by currentX).
+// A single short scroll burst finishes draining quickly — currentX stops
+// moving and the legs freeze on one frame — while the time-based offset
+// kept gliding for its full duration regardless, so Pete's body kept
+// sliding toward the logo with frozen legs until more scroll input came
+// in. Fix: drive the offset from the SAME accumulated |Δcurrentx| that
+// drives the leg cycle, so the two can only ever move in lockstep —
+// there's no clock of its own to get out of sync with.
+let walkOffsetProgress = 0; // accumulated |Δcurrentx| since Pete started walking, capped at -IDLE_OFFSET_PX
 const FRAME_DISTANCE = 11;
 let idleFrameIndex = 0;
 let idleFrameDir = 1;
@@ -459,12 +474,17 @@ function renderLoop(){
   // no easing here on purpose — currentX tracks targetX directly so walk
   // speed is set entirely by the fixed-rate scroll drain above, with no
   // extra smoothing/ramp layered on top (see Fix #2 above)
+  const walkedThisFrame = Math.abs(targetX - currentX);
   currentX = targetX;
   track.style.transform = 'translateX(' + currentX + 'px)';
   cartProp.style.transform = 'translate(' + (cartHomeLeftPx + currentX) + 'px, 50px)';
 
-  peteOffsetCurrent += (peteOffsetTarget - peteOffsetCurrent) * OFFSET_EASE;
-  if(Math.abs(peteOffsetTarget - peteOffsetCurrent) < 0.05) peteOffsetCurrent = peteOffsetTarget;
+  if(peteOffsetTarget === 0){
+    walkOffsetProgress = Math.min(-IDLE_OFFSET_PX, walkOffsetProgress + walkedThisFrame);
+    peteOffsetCurrent = IDLE_OFFSET_PX + walkOffsetProgress;
+  } else {
+    peteOffsetCurrent = peteOffsetTarget;
+  }
   pete.style.transform = 'translateX(calc(-50% + ' + peteOffsetCurrent + 'px))';
 
   if(animFrames){
