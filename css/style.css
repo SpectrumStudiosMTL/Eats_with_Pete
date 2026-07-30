@@ -233,12 +233,12 @@ body{ font-family:'Baloo 2', sans-serif; color:var(--ink); background:#fff; }
   /* just left of the Pied de Cochon storefront, per the position/scale guide —
      nudge this % to taste once checked against the live art */
   left:35%;
-  height:41.04%; /* scaled up 20% from 34.2% per feedback */
+  height:45.85%; /* reduced 2% from 46.79% per feedback */
   z-index:9;           /* Pete (z-index:10) walks in front when they overlap */
   pointer-events:auto;
   cursor:pointer;
   filter: drop-shadow(2px 4px 4px rgba(0,0,0,0.3));
-  transform: translate(915px, 0px); /* nudged left 50px per feedback */
+  transform: translate(805px, 0px); /* nudged left 10px per feedback */
 }
 .carrot-prop img{ height:100%; width:auto; display:block; }
 
