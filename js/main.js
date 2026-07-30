@@ -640,6 +640,17 @@ const gameFreezeSound = document.getElementById('gameFreezeSound');
 const gamePeteArrghSound = document.getElementById('gamePeteArrghSound');
 const gameMiniMusic = document.getElementById('gameMiniMusic');
 const allSounds = [hotdogSound, carrotSound1, carrotSound2, heyManSound, bananaStandSound, ambienceSound, gameBananaSound1, gameBananaSound2, gameFreezeSound, gamePeteArrghSound, gameMiniMusic];
+
+// --- click the banana crate: alternate the two banana sounds --------
+let bananaCrateClickToggle = 0;
+const bananaCrateProp = document.getElementById('bananaCrateProp');
+bananaCrateProp.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const snd = (bananaCrateClickToggle % 2 === 0) ? gameBananaSound1 : gameBananaSound2;
+  bananaCrateClickToggle++;
+  snd.currentTime = 0;
+  snd.play().catch(() => {});
+});
 const UNLOCK_EVENTS = ['pointerdown', 'mousedown', 'keydown', 'touchstart', 'wheel'];
 let audioUnlocked = false;
 function unlockAudioOnce(){

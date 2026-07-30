@@ -197,7 +197,8 @@ body{ font-family:'Baloo 2', sans-serif; color:var(--ink); background:#fff; }
   height:18%; /* scaled up 100% from 9% per feedback */
   width:auto;
   z-index:2; /* above the bg, below storefronts/props/Pete */
-  pointer-events:none;
+  pointer-events:auto;
+  cursor:pointer;
   user-select:none;
   transform:translate(100px, -50px); /* nudged right 100px, up 50px per feedback */
 }
