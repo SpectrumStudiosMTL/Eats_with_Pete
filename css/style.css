@@ -151,7 +151,7 @@ body{ font-family:'Baloo 2', sans-serif; color:var(--ink); background:#fff; }
   position:fixed;
   bottom:0; /* cropped flush at the art's bottom edge by design, not the sidewalk-line offset the cart uses */
   left:0; /* explicit anchor — horizontal position driven by the JS transform, same pattern as .cart-prop */
-  width:806px; /* scaled up 30% from 620px per feedback — bottom:0 anchor keeps the flush-bottom crop intact as it grows */
+  width:1500px; /* almost doubled from 806px — meant to read as a close foreground object, per feedback */
   z-index:15; /* same foreground tier as .cart-prop, above Pete (z-index:10) */
   pointer-events:none;
 }
