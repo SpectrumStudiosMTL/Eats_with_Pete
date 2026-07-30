@@ -174,7 +174,7 @@ function updateTarget(){
       lastRenderedX = 0;
       maxScrollTop = 1; // release the one-way ratchet so forward progress can resume
       track.style.transform = 'translateX(0px)';
-      cartProp.style.left = (cartHomeLeftPx) + 'px';
+      cartProp.style.transform = 'translate(' + cartHomeLeftPx + 'px, 50px)';
       setTimeout(() => { isWrapping = false; }, 50);
     });
   }
@@ -422,7 +422,7 @@ function renderLoop(){
   currentX += (targetX - currentX) * EASE;
   if(Math.abs(targetX - currentX) < 0.05) currentX = targetX;
   track.style.transform = 'translateX(' + currentX + 'px)';
-  cartProp.style.left = (cartHomeLeftPx + currentX) + 'px';
+  cartProp.style.transform = 'translate(' + (cartHomeLeftPx + currentX) + 'px, 50px)';
 
   peteOffsetCurrent += (peteOffsetTarget - peteOffsetCurrent) * OFFSET_EASE;
   if(Math.abs(peteOffsetTarget - peteOffsetCurrent) < 0.05) peteOffsetCurrent = peteOffsetTarget;

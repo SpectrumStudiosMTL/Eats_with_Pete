@@ -104,6 +104,8 @@ body{ font-family:'Baloo 2', sans-serif; color:var(--ink); background:#fff; }
   /* 100% - GROUND_FRACTION(87%) so the cart's wheels sit on the same
      sidewalk line Pete walks along */
   bottom:13%;
+  left:0; /* explicit anchor — horizontal position is driven entirely by
+     the JS transform below, left:0 just fixes the static baseline */
   width:420px; /* was width:16% (capped by max-width:420px anyway since
      that % was relative to the huge scrolling scene) — hardcoded so the
      rendered size is unchanged now that this is fixed-positioned */
@@ -112,7 +114,11 @@ body{ font-family:'Baloo 2', sans-serif; color:var(--ink); background:#fff; }
      .track's transform-created stacking context */
   pointer-events:auto;
   cursor:pointer;
-  transform: translateY(50px); /* nudged down 50px per feedback */
+  /* horizontal position + the 50px-down nudge are both applied via a single
+     JS-driven transform (see main.js) instead of animating style.left —
+     left/right are layout-affecting properties, so updating one every
+     animation frame forced a synchronous reflow each frame. transform is
+     compositor-only, so this animates without triggering layout. */
 }
 .cart-prop img{ width:100%; display:block; }
 
@@ -202,12 +208,12 @@ body{ font-family:'Baloo 2', sans-serif; color:var(--ink); background:#fff; }
   /* just left of the Pied de Cochon storefront, per the position/scale guide —
      nudge this % to taste once checked against the live art */
   left:35%;
-  height:100%; /* reset — old tuned value (34.2%/41.04%) was calibrated to the previous art, now replaced */
+  height:41.04%; /* scaled up 20% from 34.2% per feedback */
   z-index:9;           /* Pete (z-index:10) walks in front when they overlap */
   pointer-events:auto;
   cursor:pointer;
   filter: drop-shadow(2px 4px 4px rgba(0,0,0,0.3));
-  transform: translate(975px, -90px); /* right 800+75+100px, up 90px per feedback */
+  transform: translate(965px, 0px); /* nudged left 10px per feedback */
 }
 .carrot-prop img{ height:100%; width:auto; display:block; }
 
