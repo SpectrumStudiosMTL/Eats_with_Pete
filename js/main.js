@@ -87,6 +87,7 @@ const PETE_HEIGHT_RATIO = 0.34;
 let peteState = 'idle';
 let hasArrived = false; // true once the user has started scrolling at least once
 let lostFoundOpen = false; // true while the Lost and Found video modal is open — freezes scroll input
+window.isLostFoundOpen = () => lostFoundOpen; // read by banana-game.js so the two modals can't stack
 let siteLoading = true; // true until boot() below decides enough has loaded — freezes scroll input
 
 let peteOffsetTarget = 0;   // where Pete should sit, relative to screen centre
@@ -244,12 +245,13 @@ carrotProp.addEventListener('click', (e) => {
   snd.play().catch(() => {});
 });
 
-// --- click the banana stand: play its sound --------------------------
+// --- click the banana stand: play its sound, and open the mini-game ---
 const bananaStandSound = document.getElementById('bananaStandSound');
 bananaStandImg.addEventListener('click', (e) => {
   e.stopPropagation();
   bananaStandSound.currentTime = 0;
   bananaStandSound.play().catch(() => {});
+  if(window.BananaGame) window.BananaGame.open();
 });
 
 // --- proximity-triggered pointing gestures --------------------------
@@ -396,7 +398,7 @@ function queueScroll(direction){
 window.addEventListener('wheel', (e) => {
   // don't walk Pete behind the video popup / loading screen, or while
   // he's mid-dance — a click-triggered dance should hold him in place
-  if(lostFoundOpen || siteLoading || peteState === 'dance') return;
+  if(lostFoundOpen || window.miniGameOpen || siteLoading || peteState === 'dance') return;
   e.preventDefault();
   queueScroll(e.deltaY);
 }, { passive:false });
@@ -406,7 +408,7 @@ window.addEventListener('touchstart', (e) => {
   touchStartY = e.touches[0].clientY;
 }, { passive:true });
 window.addEventListener('touchmove', (e) => {
-  if(lostFoundOpen || siteLoading || peteState === 'dance') return;
+  if(lostFoundOpen || window.miniGameOpen || siteLoading || peteState === 'dance') return;
   if(touchStartY === null) return;
   const y = e.touches[0].clientY;
   queueScroll(touchStartY - y);
@@ -421,7 +423,7 @@ const SCROLL_KEY_PX = {
 window.addEventListener('keydown', (e) => {
   // leave Space/Arrow keys alone while the video modal is open — they're
   // the native <video> controls' own play/pause/seek shortcuts
-  if(lostFoundOpen || siteLoading || peteState === 'dance') return;
+  if(lostFoundOpen || window.miniGameOpen || siteLoading || peteState === 'dance') return;
   if(e.key in SCROLL_KEY_PX){
     e.preventDefault();
     queueScroll(SCROLL_KEY_PX[e.key]);
@@ -621,7 +623,11 @@ ambienceSound.play().catch(() => {});
 // practical set of real gesture types and, on the first one, play()+pause()
 // every <audio> element so all of them are unlocked together — regardless
 // of which specific interaction ends up being the one that qualifies.
-const allSounds = [hotdogSound, carrotSound1, carrotSound2, heyManSound, bananaStandSound, ambienceSound];
+const gameChompSound = document.getElementById('gameChompSound');
+const gamePowerUpSound = document.getElementById('gamePowerUpSound');
+const gameArrestedSound = document.getElementById('gameArrestedSound');
+const gameVictorySound = document.getElementById('gameVictorySound');
+const allSounds = [hotdogSound, carrotSound1, carrotSound2, heyManSound, bananaStandSound, ambienceSound, gameChompSound, gamePowerUpSound, gameArrestedSound, gameVictorySound];
 const UNLOCK_EVENTS = ['pointerdown', 'mousedown', 'keydown', 'touchstart', 'wheel'];
 let audioUnlocked = false;
 function unlockAudioOnce(){
@@ -644,6 +650,7 @@ const lostFoundClose = document.getElementById('lostFoundClose');
 const lostFoundVideo = document.getElementById('lostFoundVideo');
 
 function openLostFound(){
+  if(window.miniGameOpen) return; // don't stack modals
   lostFoundOpen = true;
   lostFoundModal.classList.add('open');
   lostFoundModal.setAttribute('aria-hidden', 'false');
