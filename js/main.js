@@ -12,7 +12,28 @@ const CARROT_FRAMES = Array.from({length:22}, (_, i) => `assets/images/carrot pe
 const BANANA_STAND_FRAMES = Array.from({length:32}, (_, i) => `assets/images/banana_stand_${String(i+1).padStart(2,'0')}.png`);
 const HANDSUP_FRAMES = Array.from({length:47}, (_, i) => `assets/images/handsup_${String(i+1).padStart(2,'0')}.png`);
 
-
+// --- preload every animation-frame PNG up front ----------------------
+// Frames were previously only fetched the first time their index came up,
+// so loops that start ping-ponging within milliseconds of page load
+// (HandsUp idle, the carrot/banana ambient loops) would show blank/missing
+// frames until the browser caught up — worse on a cold cache or a slow
+// connection, which is why it looked different across browsers/machines.
+// fetchPriority 'low' keeps these from competing with the background art
+// and Pete's first frame for bandwidth, while still warming the cache well
+// ahead of when each sequence actually gets used.
+function preloadFrames(frameArrays){
+  const seen = new Set();
+  for(const frames of frameArrays){
+    for(const src of frames){
+      if(seen.has(src)) continue;
+      seen.add(src);
+      const img = new Image();
+      img.fetchPriority = 'low';
+      img.src = src;
+    }
+  }
+}
+preloadFrames([WALK_FRAMES, POINT_BG_FRAMES, POINT_FG_FRAMES, DISCO_FRAMES, JAZZHANDS_FRAMES, CARROT_FRAMES, BANANA_STAND_FRAMES, HANDSUP_FRAMES]);
 
 const bgImg = document.getElementById('bgImg');
 const track = document.getElementById('track');
