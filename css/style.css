@@ -231,14 +231,19 @@ body{ font-family:'Baloo 2', sans-serif; color:var(--ink); background:#fff; }
   /* sidewalk level, same ground line as the hot-dog cart */
   bottom:13%;
   /* just left of the Pied de Cochon storefront, per the position/scale guide —
-     nudge this % to taste once checked against the live art */
-  left:35%;
+     nudge this % to taste once checked against the live art.
+     Folded in as one %: previously left:35% + a fixed-px transform, but a
+     fixed px offset is a different FRACTION of the scene on every window
+     size (the scene's rendered width scales with viewport height), so the
+     peddler visibly drifted relative to the storefront between windows of
+     different sizes. Keeping the whole horizontal position as a single %
+     keeps it locked to the same spot in the art on any screen. */
+  left:44.52%;
   height:45.85%; /* reduced 2% from 46.79% per feedback */
   z-index:9;           /* Pete (z-index:10) walks in front when they overlap */
   pointer-events:auto;
   cursor:pointer;
   filter: drop-shadow(2px 4px 4px rgba(0,0,0,0.3));
-  transform: translate(805px, 0px); /* nudged left 10px per feedback */
 }
 .carrot-prop img{ height:100%; width:auto; display:block; }
 
