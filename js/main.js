@@ -364,32 +364,38 @@ function stepBananaStandLoop(now){
   }
 }
 
-// --- Fix #2: cap real scroll speed --------------------------------------
-// Fast wheel spins / trackpad flicks could jump window.scrollY by hundreds
-// or thousands of px between 'scroll' events, so props could be passed
-// before their proximity check ever got a frame to notice. We take over
-// wheel/touch/keyboard input ourselves, queue the requested movement
-// (capped to a small buffer so releasing the input stops it quickly
-// instead of coasting on a huge backlog), then drain that queue by a
-// limited number of px every animation frame. The real window.scrollY —
-// and everything derived from it (progress, proximity/point triggers,
-// the end-of-scroll wrap check) — can then never advance faster than
-// that per-frame cap, no matter how hard the user scrolls.
-const MAX_SCROLL_PX_PER_FRAME = 5; // lower = slower max walk speed (was 9 -> 6 -> 5, per feedback)
-const SCROLL_QUEUE_CAP = MAX_SCROLL_PX_PER_FRAME * 6; // backlog limit, so input release stops things quickly
+// --- Fix #2: lock walk speed to a fixed rate, no ramping ----------------
+// Wheel/touch input used to be queued proportional to each event's raw
+// delta, then drained a fixed number of px per animation frame. That has
+// two problems: trackpad deltaY magnitude (and event frequency, e.g. long
+// momentum tails) varies wildly by OS/driver, so the "same" swipe could
+// queue very different amounts on different machines; and draining by a
+// fixed px-per-*frame* amount is itself frame-rate dependent — the exact
+// same input converges faster in wall-clock time on a 144Hz display than
+// a 60Hz one. Both show up as "speed varies by machine".
+//
+// Fix: (1) every wheel/touch event queues the SAME fixed amount regardless
+// of how hard/fast the trackpad reports the gesture — direction only,
+// magnitude ignored — so a gentle nudge and a violent flick walk Pete at
+// the same speed; (2) the queue drains by a fixed px-per-*second* rate
+// (time-normalized via the frame's real elapsed ms, not a per-frame
+// constant), so speed no longer depends on frame rate either. The result
+// is a single constant walk speed, the same on every machine/input device.
+const MAX_SCROLL_PX_PER_SEC = 300; // constant walk speed (was 5px/frame at an assumed 60fps)
+const SCROLL_QUEUE_CAP = MAX_SCROLL_PX_PER_SEC * 0.1; // ~100ms of backlog, so input release stops things quickly
 let scrollQueuePx = 0;
 
-function queueScroll(deltaY){
-  scrollQueuePx += deltaY;
-  scrollQueuePx = Math.max(-SCROLL_QUEUE_CAP, Math.min(SCROLL_QUEUE_CAP, scrollQueuePx));
+function queueScroll(direction){
+  // direction is a sign (+1/-1) — always jump straight to the cap, since
+  // every qualifying input should walk at the one fixed speed, not ramp
+  // up toward it.
+  scrollQueuePx = Math.sign(direction) * SCROLL_QUEUE_CAP;
 }
 
 window.addEventListener('wheel', (e) => {
   if(lostFoundOpen || siteLoading) return; // don't walk Pete behind the video popup / loading screen
   e.preventDefault();
-  // deltaMode 1 = lines (typical mouse wheel notches) — normalize to ~px
-  const px = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
-  queueScroll(px);
+  queueScroll(e.deltaY);
 }, { passive:false });
 
 let touchStartY = null;
@@ -419,9 +425,10 @@ window.addEventListener('keydown', (e) => {
   }
 }, { passive:false });
 
-function drainScrollQueue(){
+function drainScrollQueue(dtMs){
   if(scrollQueuePx !== 0){
-    const step = Math.sign(scrollQueuePx) * Math.min(Math.abs(scrollQueuePx), MAX_SCROLL_PX_PER_FRAME);
+    const maxStep = MAX_SCROLL_PX_PER_SEC * (dtMs / 1000);
+    const step = Math.sign(scrollQueuePx) * Math.min(Math.abs(scrollQueuePx), maxStep);
     window.scrollBy(0, step);
     scrollQueuePx -= step;
   }
@@ -436,18 +443,23 @@ if(bgImg.complete && bgImg.naturalWidth > 0){
   bgImg.addEventListener('load', layout);
 }
 
-const EASE = 0.09;
 const OFFSET_EASE = 0.12;
 const FRAME_DISTANCE = 11;
 let idleFrameIndex = 0;
 let idleFrameDir = 1;
 let idleLastStep = 0;
+let lastFrameTime = performance.now();
 
 function renderLoop(){
-  drainScrollQueue();
+  const now = performance.now();
+  const dtMs = now - lastFrameTime;
+  lastFrameTime = now;
+  drainScrollQueue(dtMs);
 
-  currentX += (targetX - currentX) * EASE;
-  if(Math.abs(targetX - currentX) < 0.05) currentX = targetX;
+  // no easing here on purpose — currentX tracks targetX directly so walk
+  // speed is set entirely by the fixed-rate scroll drain above, with no
+  // extra smoothing/ramp layered on top (see Fix #2 above)
+  currentX = targetX;
   track.style.transform = 'translateX(' + currentX + 'px)';
   cartProp.style.transform = 'translate(' + (cartHomeLeftPx + currentX) + 'px, 50px)';
 
