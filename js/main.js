@@ -479,6 +479,21 @@ let idleFrameDir = 1;
 let idleLastStep = 0;
 let lastFrameTime = performance.now();
 
+// --- ambient Disco/JazzHands cycle when the user pauses mid-walk ------
+// Distinct from the true 'idle' state above (HandsUp, only before the
+// user has ever scrolled) — this kicks in once Pete is already walking
+// but the user stops giving scroll input for a while, so he isn't just
+// frozen mid-stride. Reverts to the walk cycle the instant movement
+// resumes.
+const WALK_PAUSE_MS = 3000;
+let lastWalkMoveTime = performance.now();
+let pausedAmbientActive = false;
+let pauseFrames = DISCO_FRAMES;
+let pauseFrameIndex = 0;
+let pauseFrameDir = 1;
+let pauseLastStep = 0;
+let pauseReachedEnd = false;
+
 function renderLoop(){
   const now = performance.now();
   const dtMs = now - lastFrameTime;
@@ -536,12 +551,47 @@ function renderLoop(){
       peteImg.src = HANDSUP_FRAMES[idleFrameIndex];
     }
   } else {
-    // normal scroll-driven walk cycle
-    const delta = Math.abs(currentX - lastRenderedX);
-    if(delta > FRAME_DISTANCE){
-      lastRenderedX = currentX;
-      frameIndex = (frameIndex + 1) % WALK_FRAMES.length;
-      peteImg.src = WALK_FRAMES[frameIndex];
+    // normal scroll-driven walk cycle, with an ambient Disco/JazzHands
+    // ping-pong cycle kicking in if the user stops scrolling for
+    // WALK_PAUSE_MS mid-walk, instead of leaving Pete frozen mid-stride
+    if(walkedThisFrame > 0){
+      lastWalkMoveTime = now;
+      pausedAmbientActive = false;
+    } else if(!pausedAmbientActive && now - lastWalkMoveTime > WALK_PAUSE_MS){
+      pausedAmbientActive = true;
+      pauseFrames = DISCO_FRAMES;
+      pauseFrameIndex = 0;
+      pauseFrameDir = 1;
+      pauseReachedEnd = false;
+      pauseLastStep = now;
+    }
+
+    if(pausedAmbientActive){
+      // same ping-pong-then-swap-loop pattern as the true idle state above
+      if(now - pauseLastStep > DANCE_FRAME_MS){
+        pauseLastStep = now;
+        pauseFrameIndex += pauseFrameDir;
+        if(pauseFrameIndex >= pauseFrames.length - 1){
+          pauseFrameIndex = pauseFrames.length - 1;
+          pauseFrameDir = -1;
+          pauseReachedEnd = true;
+        } else if(pauseFrameIndex <= 0){
+          pauseFrameIndex = 0;
+          pauseFrameDir = 1;
+          if(pauseReachedEnd){
+            pauseReachedEnd = false;
+            pauseFrames = (pauseFrames === DISCO_FRAMES) ? JAZZHANDS_FRAMES : DISCO_FRAMES;
+          }
+        }
+        peteImg.src = pauseFrames[pauseFrameIndex];
+      }
+    } else {
+      const delta = Math.abs(currentX - lastRenderedX);
+      if(delta > FRAME_DISTANCE){
+        lastRenderedX = currentX;
+        frameIndex = (frameIndex + 1) % WALK_FRAMES.length;
+        peteImg.src = WALK_FRAMES[frameIndex];
+      }
     }
   }
 
