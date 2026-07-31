@@ -69,9 +69,23 @@ body{ font-family:'Baloo 2', sans-serif; color:var(--ink); background:#fff; }
 .margin{
   flex:0 0 auto;
   height:100%;
+  position:relative; /* anchors .cheesekid-prop's absolute positioning */
   display:flex;
   align-items:center;
   justify-content:center;
+}
+
+.cheesekid-prop{
+  position:absolute;
+  bottom:14%; /* roughly the same ground line as the carrot peddler/cart */
+  right:10%;  /* between the logo and the scene edge, in Pete's walking path */
+  transform:translateX(1000px) translateY(-20px); /* pushed fully off-screen at load, nudged up per feedback */
+  height:48%; /* scaled up 100% per feedback */
+  width:auto;
+  z-index:1;
+  pointer-events:auto; /* hoverable — see the hover reaction in main.js */
+  cursor:pointer;
+  user-select:none;
 }
 
 .logo-prop{

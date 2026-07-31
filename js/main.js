@@ -11,6 +11,7 @@ const JAZZHANDS_FRAMES = ["assets/images/jazzhands_01.png", "assets/images/jazzh
 const CARROT_FRAMES = Array.from({length:22}, (_, i) => `assets/images/carrot peddler${String(i).padStart(4,'0')}.png`);
 const BANANA_STAND_FRAMES = Array.from({length:32}, (_, i) => `assets/images/banana_stand_${String(i+1).padStart(2,'0')}.png`);
 const HANDSUP_FRAMES = Array.from({length:47}, (_, i) => `assets/images/handsup_${String(i+1).padStart(2,'0')}.png`);
+const CHEESEKID_FRAMES = Array.from({length:31}, (_, i) => `assets/images/cheesekid_${String(i+1).padStart(2,'0')}.png`);
 
 // --- preload every animation-frame PNG up front ----------------------
 // Frames were previously only fetched the first time their index came up,
@@ -38,7 +39,7 @@ function preloadFrames(frameArrays, priority){
 // since it isn't needed until later (a click, a scroll, or a prop the
 // user hasn't reached yet).
 preloadFrames([DISCO_FRAMES, HANDSUP_FRAMES, WALK_FRAMES]);
-preloadFrames([POINT_BG_FRAMES, POINT_FG_FRAMES, JAZZHANDS_FRAMES, CARROT_FRAMES, BANANA_STAND_FRAMES], 'low');
+preloadFrames([POINT_BG_FRAMES, POINT_FG_FRAMES, JAZZHANDS_FRAMES, CARROT_FRAMES, BANANA_STAND_FRAMES, CHEESEKID_FRAMES], 'low');
 
 const bgImg = document.getElementById('bgImg');
 const track = document.getElementById('track');
@@ -56,6 +57,7 @@ const ambienceSound = document.getElementById('ambienceSound');
 const muteBtn = document.getElementById('muteBtn');
 const carrotImg = document.getElementById('carrotImg');
 const bananaStandImg = document.getElementById('bananaStandImg');
+const cheesekidImg = document.getElementById('cheesekidImg');
 
 // Fix #1 (belt-and-suspenders): force the logo starting point on every
 // fresh load or restore, in case scrollRestoration alone isn't enough on
@@ -129,7 +131,7 @@ function layout(){
   // now it's a fixed sibling of #pete so its screen position is computed by
   // hand each frame in renderLoop as cartHomeLeftPx + currentX
   const CART_LEFT_FRACTION = 0.08; // moved left from 0.19 to make room for the B.R.O. car
-  cartHomeLeftPx = viewportWidth + CART_LEFT_FRACTION * sceneWidth;
+  cartHomeLeftPx = viewportWidth + CART_LEFT_FRACTION * sceneWidth + 100; // nudged right 100px per feedback
 
   // B.R.O. car sits where the cart used to be, same fixed-sibling pattern
   const BRO_CAR_LEFT_FRACTION = 0.19;
@@ -376,6 +378,50 @@ function stepBananaStandLoop(now){
   }
 }
 
+// --- ambient cheese kid loop (purely decorative, independent of scroll) ---
+// fills the blank lead-margin walk-up stretch — sits between the logo and
+// the scene, wiggling in place while Pete walks toward the storefronts.
+// The first 3 frames are held back from the ambient loop; only the first
+// of those is used, as a single-frame flash reaction on hover.
+const CHEESEKID_IDLE_FRAMES = CHEESEKID_FRAMES.slice(3);
+const CHEESEKID_HOVER_FRAME = CHEESEKID_FRAMES[0];
+const CHEESEKID_HOVER_DURATION_MS = 500; // how long the hover flash holds before resuming the idle loop
+const CHEESEKID_COOL_FRAME = 'assets/images/cheesekid_cool.png';
+new Image().src = CHEESEKID_COOL_FRAME; // warm the cache so the click reaction never shows a blank frame
+const CHEESEKID_COOL_DURATION_MS = 1200; // click reaction: holds the cool pose, then resumes idle/hover
+const CHEESEKID_FRAME_MS = 90;
+let cheesekidFrameIndex = 0;
+let cheesekidLastStep = 0;
+let cheesekidCoolUntil = 0;  // performance.now() timestamp the click reaction ends at, 0 when inactive
+let cheesekidHoverUntil = 0; // same idea for the hover flash
+function stepCheesekidLoop(now){
+  if(cheesekidCoolUntil){
+    if(now < cheesekidCoolUntil) return; // held on the cool frame, skip normal stepping
+    cheesekidCoolUntil = 0;
+    cheesekidFrameIndex = 0;
+  }
+  if(cheesekidHoverUntil){
+    if(now < cheesekidHoverUntil) return; // held on the hover flash frame
+    cheesekidHoverUntil = 0;
+    cheesekidFrameIndex = 0;
+  }
+  if(now - cheesekidLastStep > CHEESEKID_FRAME_MS){
+    cheesekidLastStep = now;
+    cheesekidFrameIndex = (cheesekidFrameIndex + 1) % CHEESEKID_IDLE_FRAMES.length;
+    cheesekidImg.src = CHEESEKID_IDLE_FRAMES[cheesekidFrameIndex];
+  }
+}
+cheesekidImg.addEventListener('mouseenter', () => {
+  if(cheesekidCoolUntil) return; // don't interrupt an in-progress click reaction
+  cheesekidHoverUntil = performance.now() + CHEESEKID_HOVER_DURATION_MS;
+  cheesekidImg.src = CHEESEKID_HOVER_FRAME;
+});
+cheesekidImg.addEventListener('click', () => {
+  cheesekidCoolUntil = performance.now() + CHEESEKID_COOL_DURATION_MS;
+  cheesekidHoverUntil = 0;
+  cheesekidImg.src = CHEESEKID_COOL_FRAME;
+});
+
 // --- Fix #2: lock walk speed to a fixed rate, no ramping ----------------
 // Wheel/touch input used to be queued proportional to each event's raw
 // delta, then drained a fixed number of px per animation frame. That has
@@ -599,6 +645,7 @@ function renderLoop(){
   checkProximitySounds();
   stepCarrotLoop(performance.now());
   stepBananaStandLoop(performance.now());
+  stepCheesekidLoop(performance.now());
 
   requestAnimationFrame(renderLoop);
 }
@@ -606,6 +653,7 @@ function renderLoop(){
 peteImg.src = HANDSUP_FRAMES[0];
 carrotImg.src = CARROT_FRAMES[0];
 bananaStandImg.src = BANANA_STAND_FRAMES[0];
+cheesekidImg.src = CHEESEKID_IDLE_FRAMES[0];
 layout();
 requestAnimationFrame(renderLoop);
 
