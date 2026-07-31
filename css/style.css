@@ -219,20 +219,19 @@ body{ font-family:'Baloo 2', sans-serif; color:var(--ink); background:#fff; }
 .lost-found-icon{
   position:absolute;
   /* blank grey wall panel right of Schwartz's, before the Garage sign —
-     nudge these % to taste once checked against the live art, and once
-     replaced with real (non-placeholder) art */
+     nudge these % to taste once checked against the live art */
   left:33.28%;
   top:23.5%;
-  height:14.19%;
-  aspect-ratio:1/1;
-  width:auto;
+  height:22.35%; /* scaled up 50%, then another 5%, per feedback */
+  width:auto; /* natural aspect ratio of the real sign art, not forced square */
+  transform:translate(-45px, -30px); /* nudged left/up per feedback */
   z-index:2; /* above the bg, below storefronts/props/Pete */
   pointer-events:auto;
   cursor:pointer;
   user-select:none;
   transition:transform .2s;
 }
-.lost-found-icon:hover{ transform:scale(1.08); }
+.lost-found-icon:hover{ transform:translate(-45px, -30px) scale(1.08); }
 
 .banana-crate-prop{
   position:absolute;

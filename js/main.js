@@ -12,6 +12,7 @@ const CARROT_FRAMES = Array.from({length:22}, (_, i) => `assets/images/carrot pe
 const BANANA_STAND_FRAMES = Array.from({length:32}, (_, i) => `assets/images/banana_stand_${String(i+1).padStart(2,'0')}.png`);
 const HANDSUP_FRAMES = Array.from({length:47}, (_, i) => `assets/images/handsup_${String(i+1).padStart(2,'0')}.png`);
 const CHEESEKID_FRAMES = Array.from({length:31}, (_, i) => `assets/images/cheesekid_${String(i+1).padStart(2,'0')}.png`);
+const LOST_FOUND_SIGN_FRAMES = Array.from({length:60}, (_, i) => `assets/images/lost_and_found_sign_${String(i+1).padStart(2,'0')}.png`);
 
 // --- preload every animation-frame PNG up front ----------------------
 // Frames were previously only fetched the first time their index came up,
@@ -39,7 +40,7 @@ function preloadFrames(frameArrays, priority){
 // since it isn't needed until later (a click, a scroll, or a prop the
 // user hasn't reached yet).
 preloadFrames([DISCO_FRAMES, HANDSUP_FRAMES, WALK_FRAMES]);
-preloadFrames([POINT_BG_FRAMES, POINT_FG_FRAMES, JAZZHANDS_FRAMES, CARROT_FRAMES, BANANA_STAND_FRAMES, CHEESEKID_FRAMES], 'low');
+preloadFrames([POINT_BG_FRAMES, POINT_FG_FRAMES, JAZZHANDS_FRAMES, CARROT_FRAMES, BANANA_STAND_FRAMES, CHEESEKID_FRAMES, LOST_FOUND_SIGN_FRAMES], 'low');
 
 const bgImg = document.getElementById('bgImg');
 const track = document.getElementById('track');
@@ -384,6 +385,18 @@ function stepBananaStandLoop(now){
   }
 }
 
+// --- ambient Lost 'n' Found sign loop (purely decorative, independent of scroll) ---
+const LOST_FOUND_SIGN_FRAME_MS = 90;
+let lostFoundSignFrameIndex = 0;
+let lostFoundSignLastStep = 0;
+function stepLostFoundSignLoop(now){
+  if(now - lostFoundSignLastStep > LOST_FOUND_SIGN_FRAME_MS){
+    lostFoundSignLastStep = now;
+    lostFoundSignFrameIndex = (lostFoundSignFrameIndex + 1) % LOST_FOUND_SIGN_FRAMES.length;
+    lostFoundIcon.src = LOST_FOUND_SIGN_FRAMES[lostFoundSignFrameIndex];
+  }
+}
+
 // --- ambient cheese kid loop (purely decorative, independent of scroll) ---
 // fills the blank lead-margin walk-up stretch — sits between the logo and
 // the scene, wiggling in place while Pete walks toward the storefronts.
@@ -652,6 +665,7 @@ function renderLoop(){
   stepCarrotLoop(performance.now());
   stepBananaStandLoop(performance.now());
   stepCheesekidLoop(performance.now());
+  stepLostFoundSignLoop(performance.now());
 
   requestAnimationFrame(renderLoop);
 }
@@ -772,6 +786,7 @@ UNLOCK_EVENTS.forEach(ev => window.addEventListener(ev, unlockAudioOnce, { captu
 
 // --- Lost and Found: click the icon to pop up the video --------------
 const lostFoundIcon = document.getElementById('lostFoundIcon');
+lostFoundIcon.src = LOST_FOUND_SIGN_FRAMES[0];
 const lostFoundModal = document.getElementById('lostFoundModal');
 const lostFoundBackdrop = document.getElementById('lostFoundBackdrop');
 const lostFoundClose = document.getElementById('lostFoundClose');
