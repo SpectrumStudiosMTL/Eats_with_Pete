@@ -433,6 +433,21 @@ body{ font-family:'Baloo 2', sans-serif; color:var(--ink); background:#fff; }
   display:none;
 }
 .handcuffs-video.show{ display:block; }
+.game-winner-video{
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  z-index:5;
+  width:80%;
+  max-width:420px;
+  border:4px solid var(--yellow);
+  border-radius:6px;
+  box-shadow:6px 8px 0 rgba(0,0,0,0.4);
+  background:#000;
+  display:none;
+}
+.game-winner-video.show{ display:block; }
 .game-over-prompt{
   position:absolute;
   top:50%;

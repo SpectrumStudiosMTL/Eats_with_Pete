@@ -117,6 +117,7 @@ const miniMusic = document.getElementById('gameMiniMusic');
 const ambienceSound = document.getElementById('ambienceSound'); // main site's background track — ducked while the game is open
 const cheeseRoomVideo = document.getElementById('cheeseRoomVideo');
 const handcuffsVideo = document.getElementById('handcuffsVideo');
+const gameWinnerVideo = document.getElementById('gameWinnerVideo');
 const gameOverPrompt = document.getElementById('gameOverPrompt');
 const playAgainBtn = document.getElementById('playAgainBtn');
 
@@ -243,6 +244,24 @@ playAgainBtn.addEventListener('click', () => {
   hideGameOverSequence();
   resetGame();
 });
+
+// --- final win: special video plays over the confetti/YOU WIN screen,
+// which is already up underneath (see winRound() below) — nothing to
+// advance to afterward, just hide it and let that screen show through ---
+let gameWinnerVideoFallback = null;
+function playGameWinnerVideo(){
+  gameWinnerVideo.currentTime = 0;
+  gameWinnerVideo.classList.add('show');
+  gameWinnerVideo.play().catch(() => {});
+  clearTimeout(gameWinnerVideoFallback);
+  gameWinnerVideoFallback = setTimeout(hideGameWinnerVideo, 8000); // fallback in case the video can't play
+}
+function hideGameWinnerVideo(){
+  clearTimeout(gameWinnerVideoFallback);
+  gameWinnerVideo.pause();
+  gameWinnerVideo.classList.remove('show');
+}
+gameWinnerVideo.addEventListener('ended', hideGameWinnerVideo);
 
 // --- game state -------------------------------------------------------
 let livePellets, livePowers;
@@ -459,12 +478,13 @@ function repositionAfterDeath(){
 
 function winRound(){
   score += SCORE_CHEESE;
-  playCheeseRoomVideo();
   if(round >= TOTAL_ROUNDS){
     playVictorySfx();
     spawnConfetti();
     setState('gameWon', 0);
+    playGameWinnerVideo(); // final round: special video instead of the usual cheese-room cutscene
   } else {
+    playCheeseRoomVideo();
     // no fixed timer here — advances once the cheese-room video ends
     // (or its fallback timeout), see playCheeseRoomVideo() above
     setState('roundWon', 0);
@@ -747,6 +767,7 @@ function close(){
   rafId = null;
   hideCheeseRoomVideo();
   hideGameOverSequence();
+  hideGameWinnerVideo();
   miniMusic.pause();
   ambienceSound.play().catch(() => {});
 }
