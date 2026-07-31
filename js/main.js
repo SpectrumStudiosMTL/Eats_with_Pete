@@ -91,6 +91,7 @@ let peteState = 'idle';
 let hasArrived = false; // true once the user has started scrolling at least once
 let lostFoundOpen = false; // true while the Lost and Found video modal is open — freezes scroll input
 window.isLostFoundOpen = () => lostFoundOpen; // read by banana-game.js so the two modals can't stack
+let mysteryCarrotOpen = false; // true while the mystery-carrot prompt/video is open — freezes scroll input
 let siteLoading = true; // true until boot() below decides enough has loaded — freezes scroll input
 
 let peteOffsetTarget = 0;   // where Pete should sit, relative to screen centre
@@ -246,6 +247,8 @@ cartProp.addEventListener('click', (e) => {
 const broCarProp = document.getElementById('broCarProp');
 
 // --- click the carrot peddler: alternate gotthestuff -> lazerwave -> ... ---
+// and every 3rd click, pop up the mystery-carrot prompt instead (cycles
+// forever: 3rd, 6th, 9th, ...)
 let carrotClickToggle = 0;
 carrotProp.addEventListener('click', (e) => {
   e.stopPropagation();
@@ -253,6 +256,9 @@ carrotProp.addEventListener('click', (e) => {
   carrotClickToggle++;
   snd.currentTime = 0;
   snd.play().catch(() => {});
+  if(carrotClickToggle % 3 === 0 && !mysteryCarrotOpen){
+    openMysteryCarrot();
+  }
 });
 
 // --- click the banana stand: play its sound, and open the mini-game ---
@@ -453,7 +459,7 @@ function queueScroll(direction){
 window.addEventListener('wheel', (e) => {
   // don't walk Pete behind the video popup / loading screen, or while
   // he's mid-dance — a click-triggered dance should hold him in place
-  if(lostFoundOpen || window.miniGameOpen || siteLoading || peteState === 'dance') return;
+  if(lostFoundOpen || mysteryCarrotOpen || window.miniGameOpen || siteLoading || peteState === 'dance') return;
   e.preventDefault();
   queueScroll(e.deltaY);
 }, { passive:false });
@@ -463,7 +469,7 @@ window.addEventListener('touchstart', (e) => {
   touchStartY = e.touches[0].clientY;
 }, { passive:true });
 window.addEventListener('touchmove', (e) => {
-  if(lostFoundOpen || window.miniGameOpen || siteLoading || peteState === 'dance') return;
+  if(lostFoundOpen || mysteryCarrotOpen || window.miniGameOpen || siteLoading || peteState === 'dance') return;
   if(touchStartY === null) return;
   const y = e.touches[0].clientY;
   queueScroll(touchStartY - y);
@@ -478,7 +484,7 @@ const SCROLL_KEY_PX = {
 window.addEventListener('keydown', (e) => {
   // leave Space/Arrow keys alone while the video modal is open — they're
   // the native <video> controls' own play/pause/seek shortcuts
-  if(lostFoundOpen || window.miniGameOpen || siteLoading || peteState === 'dance') return;
+  if(lostFoundOpen || mysteryCarrotOpen || window.miniGameOpen || siteLoading || peteState === 'dance') return;
   if(e.key in SCROLL_KEY_PX){
     e.preventDefault();
     queueScroll(SCROLL_KEY_PX[e.key]);
@@ -802,5 +808,52 @@ lostFoundClose.addEventListener('click', closeLostFound);
 lostFoundVideo.addEventListener('ended', closeLostFound);
 window.addEventListener('keydown', (e) => {
   if(lostFoundOpen && e.key === 'Escape') closeLostFound();
+});
+
+// --- Mystery carrot: 3rd carrot-peddler click pops up a Yes/No prompt,
+// and YES swaps to the pete_trip video (see the carrotProp click handler
+// above for the trigger) -------------------------------------------------
+const mysteryCarrotModal = document.getElementById('mysteryCarrotModal');
+const mysteryCarrotBackdrop = document.getElementById('mysteryCarrotBackdrop');
+const mysteryCarrotQuestion = document.getElementById('mysteryCarrotQuestion');
+const mysteryCarrotVideoWrap = document.getElementById('mysteryCarrotVideoWrap');
+const mysteryCarrotYes = document.getElementById('mysteryCarrotYes');
+const mysteryCarrotNo = document.getElementById('mysteryCarrotNo');
+const mysteryCarrotClose = document.getElementById('mysteryCarrotClose');
+const mysteryCarrotVideo = document.getElementById('mysteryCarrotVideo');
+
+function openMysteryCarrot(){
+  if(window.miniGameOpen || lostFoundOpen) return; // don't stack modals
+  mysteryCarrotOpen = true;
+  mysteryCarrotModal.classList.add('open');
+  mysteryCarrotModal.setAttribute('aria-hidden', 'false');
+  mysteryCarrotQuestion.style.display = '';
+  mysteryCarrotVideoWrap.classList.remove('show');
+}
+
+function closeMysteryCarrot(){
+  mysteryCarrotOpen = false;
+  mysteryCarrotModal.classList.remove('open');
+  mysteryCarrotModal.setAttribute('aria-hidden', 'true');
+  mysteryCarrotVideo.pause();
+}
+
+mysteryCarrotYes.addEventListener('click', () => {
+  // the carrot peddler's own click-sound cue (from the 3rd click that
+  // opened this prompt) can still be ringing out — stop it so it doesn't
+  // overlap the video's own audio
+  carrotSound1.pause();
+  carrotSound2.pause();
+  mysteryCarrotQuestion.style.display = 'none';
+  mysteryCarrotVideoWrap.classList.add('show');
+  mysteryCarrotVideo.currentTime = 0;
+  mysteryCarrotVideo.play().catch(() => {});
+});
+mysteryCarrotNo.addEventListener('click', closeMysteryCarrot);
+mysteryCarrotBackdrop.addEventListener('click', closeMysteryCarrot);
+mysteryCarrotClose.addEventListener('click', closeMysteryCarrot);
+mysteryCarrotVideo.addEventListener('ended', closeMysteryCarrot);
+window.addEventListener('keydown', (e) => {
+  if(mysteryCarrotOpen && e.key === 'Escape') closeMysteryCarrot();
 });
 
